@@ -2,6 +2,8 @@
  * types.ts - Core types and interfaces for Gully Cricket
  */
 
+import type { Animator } from './animation.ts';
+
 /** Possible game state machine states */
 export type GameStateKind =
   | 'TITLE'
@@ -17,6 +19,7 @@ export type OutcomeType =
   | 'SINGLE'
   | 'WINDOW'
   | 'SCOOTER'
+  | 'CAR_GLASS'
   | 'MISS'
   | 'BOWLED';
 
@@ -33,14 +36,14 @@ export type TimingRating =
 
 /** Rig part definition for hierarchical 2D character rendering */
 export interface RigPart {
-  pivotX: number;     // Pivot offset X from rig origin
-  pivotY: number;     // Pivot offset Y from rig origin
-  width: number;      // Bounding width of the part
-  height: number;     // Bounding height of the part
-  angle: number;      // Local rotation in radians
-  color: string;      // Fill/stroke color
-  label?: string;     // Optional debug label
-  children?: RigPart[]; // Sub-parts attached to this joint
+  pivotX: number;
+  pivotY: number;
+  width: number;
+  height: number;
+  angle: number;
+  color: string;
+  label?: string;
+  children?: RigPart[];
 }
 
 /** Character rig containing named body parts */
@@ -65,8 +68,8 @@ export interface BallState {
   radius: number;
   active: boolean;
   bounced: boolean;
-  target?: Vector2D;   // Trajectory target during hit
-  arcProgress?: number; // 0 to 1 for hit trajectory
+  target?: Vector2D;
+  arcProgress?: number;
   startPos?: Vector2D;
 }
 
@@ -74,13 +77,14 @@ export interface BallState {
 export interface DeliveryResult {
   outcome: OutcomeType;
   timingRating: TimingRating;
-  timingOffsetPx: number;  // Distance from sweet spot (px)
-  timingOffsetMs: number;  // Approximate timing error in ms
+  timingOffsetPx: number;
+  timingOffsetMs: number;
   description: string;
   runsScored: number;
   livesLost: number;
   isWindowBroken: boolean;
   isScooterHit: boolean;
+  isCarGlassBroken?: boolean;
 }
 
 /** Complete runtime game state */
@@ -94,9 +98,19 @@ export interface GameState {
   lastResult: DeliveryResult | null;
   batterRig: CharacterRig;
   bowlerRig: CharacterRig;
-  swingProgress: number;     // 0 = ready, 0..1 = swinging, 1 = finish
+  fielder1Rig: CharacterRig;
+  fielder2Rig: CharacterRig;
+  batterAnimator: Animator;
+  bowlerAnimator: Animator;
+  fielder1Animator: Animator;
+  fielder2Animator: Animator;
+  previewClipName: string | null;
+  isBallReleased: boolean;
+  bowlerPhase: 'RUN_UP' | 'DELIVERY' | 'RELEASED';
+  bowlerTimer: number;
+  swingProgress: number;
   isSwinging: boolean;
   hasSwungThisBall: boolean;
-  resultTimer: number;       // Elapsed time in RESULT state
-  debugMode: boolean;        // Toggle with 'D'
+  resultTimer: number;
+  debugMode: boolean;
 }

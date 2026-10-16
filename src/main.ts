@@ -1,54 +1,64 @@
 /**
- * main.ts - Application entry point. Sets up the canvas, initializes input
- * handlers, and runs the requestAnimationFrame game loop with delta time.
+ * main.ts - Application entry point. Handles responsive full-window canvas,
+ * devicePixelRatio backing store, debounced static scene rebuilds, and game loop.
  */
 
-import { CONFIG } from './config.ts';
-import { createInitialState, updateGame, handlePlayerSwing } from './state.ts';
-import { renderGame } from './render.ts';
+import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip } from './state.ts';
+import { renderGame, computeCamera, rebuildStaticScene, type CameraViewport } from './render.ts';
 import { InputManager } from './input.ts';
 
 function initGame(): void {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-  if (!canvas) {
-    throw new Error('Canvas element #game-canvas not found');
-  }
+  if (!canvas) throw new Error('Canvas element #game-canvas not found');
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Unable to obtain 2D canvas context');
+  if (!ctx) throw new Error('Unable to obtain 2D canvas context');
+
+  let camera: CameraViewport;
+  let resizeTimer: number | null = null;
+
+  function resize(): void {
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = window.innerWidth;
+    const cssH = window.innerHeight;
+
+    // Backing store = CSS size * DPR for razor-sharp rendering
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+
+    camera = computeCamera(cssW, cssH, dpr);
+
+    // Debounced rebuild of static scene on resize
+    if (resizeTimer !== null) window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      rebuildStaticScene();
+      resizeTimer = null;
+    }, 150);
   }
 
-  // Set internal virtual resolution (portrait-friendly 9:16 reference)
-  canvas.width = CONFIG.canvas.width;
-  canvas.height = CONFIG.canvas.height;
+  // Initial sizing and camera setup
+  resize();
+  window.addEventListener('resize', resize);
 
-  // Initialize modular game state
   const state = createInitialState();
 
-  // Set up unified input manager (tap, click, space, and debug toggle 'D')
+  // Input manager: clicks/taps anywhere trigger swing; D toggles debug; P previews poses
   new InputManager(canvas, {
-    onAction: () => {
-      handlePlayerSwing(state);
-    },
+    onAction: () => handlePlayerSwing(state),
     onDebugToggle: () => {
       state.debugMode = !state.debugMode;
     },
+    onPreviewToggle: () => cycleBatterPreviewClip(state),
   });
 
-  // Track timestamps for frame-rate independent delta time
   let lastTime = performance.now();
 
   function loop(currentTime: number): void {
-    // Delta time in seconds
     const dt = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
 
-    // 1. Advance game physics and state transitions
     updateGame(state, dt);
-
-    // 2. Render all scene elements, rigs, and debug overlays
-    renderGame(ctx!, state);
+    renderGame(ctx!, state, camera);
 
     requestAnimationFrame(loop);
   }
@@ -59,5 +69,4 @@ function initGame(): void {
   });
 }
 
-// Start game after DOM is loaded
 window.addEventListener('DOMContentLoaded', initGame);

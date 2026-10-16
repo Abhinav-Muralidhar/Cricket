@@ -1,45 +1,74 @@
 /**
- * render.ts - Canvas rendering system. Draws the gully street, character rigs,
- * placeholder elements, ball, HUD text, and debug timing windows.
+ * render.ts - Canvas rendering, camera scaling (1600x800 world to screen), and screen-space HUD.
  */
 
-import { CONFIG } from './config.ts';
+import { CONFIG, PALETTE } from './config.ts';
+import { createStaticSceneCanvas } from './scene.ts';
+import { EASINGS } from './animation.ts';
 import type { GameState, CharacterRig, RigPart } from './types.ts';
 
-/**
- * Draws an individual rig part with local pivot translation and rotation.
- */
-function drawRigPart(ctx: CanvasRenderingContext2D, rigX: number, rigY: number, part: RigPart): void {
-  ctx.save();
-  // Translate to the part's pivot point
-  ctx.translate(rigX + part.pivotX, rigY + part.pivotY);
-  ctx.rotate(part.angle);
+export interface CameraViewport {
+  scale: number;
+  dpr: number;
+  cssWidth: number;
+  cssHeight: number;
+  worldLeft: number;
+  worldTop: number;
+  visibleWorldWidth: number;
+  visibleWorldHeight: number;
+  isPortraitPhone: boolean;
+}
 
-  ctx.fillStyle = part.color;
-  ctx.strokeStyle = '#ffffff22';
-  ctx.lineWidth = 1;
+let staticCanvasCache: HTMLCanvasElement | null = null;
+export function rebuildStaticScene(): void {
+  staticCanvasCache = createStaticSceneCanvas();
+}
+function getStaticScene(): HTMLCanvasElement {
+  if (!staticCanvasCache) rebuildStaticScene();
+  return staticCanvasCache!;
+}
 
-  // Draw rectangle centered horizontally on the pivot
-  const rx = -part.width / 2;
-  const ry = 0;
-  ctx.fillRect(rx, ry, part.width, part.height);
-  ctx.strokeRect(rx, ry, part.width, part.height);
+export function computeCamera(cssWidth: number, cssHeight: number, dpr: number): CameraViewport {
+  const worldH = CONFIG.world.height;
+  const actionCenter = CONFIG.world.actionCenterX;
+  const fitHScale = cssHeight / worldH;
+  const rawVisibleWidth = cssWidth / fitHScale;
 
-  // If part has child parts, draw them recursively
-  if (part.children) {
-    for (const child of part.children) {
-      drawRigPart(ctx, 0, 0, child);
-    }
+  let scale = fitHScale;
+  let visibleWorldWidth = rawVisibleWidth;
+  let visibleWorldHeight = worldH;
+  let worldTop = 0;
+  let isPortraitPhone = false;
+
+  if (rawVisibleWidth < CONFIG.world.minVisibleWidth) {
+    isPortraitPhone = true;
+    scale = cssWidth / CONFIG.world.minVisibleWidth;
+    visibleWorldWidth = CONFIG.world.minVisibleWidth;
+    visibleWorldHeight = cssHeight / scale;
+    worldTop = -(visibleWorldHeight - worldH) * 0.42; // Extra sky above, extra street below
+  } else {
+    visibleWorldWidth = Math.min(CONFIG.world.maxVisibleWidth, rawVisibleWidth);
+    scale = cssHeight / worldH;
+    worldTop = 0;
   }
 
+  const worldLeft = actionCenter - visibleWorldWidth / 2;
+  return { scale, dpr, cssWidth, cssHeight, worldLeft, worldTop, visibleWorldWidth, visibleWorldHeight, isPortraitPhone };
+}
+
+function drawRigPart(ctx: CanvasRenderingContext2D, rigX: number, rigY: number, part: RigPart): void {
+  ctx.save();
+  ctx.translate(rigX + part.pivotX, rigY + part.pivotY);
+  ctx.rotate(part.angle);
+  ctx.fillStyle = part.color;
+  ctx.fillRect(-part.width / 2, 0, part.width, part.height);
+  ctx.strokeStyle = PALETTE.outlines;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-part.width / 2, 0, part.width, part.height);
   ctx.restore();
 }
 
-/**
- * Renders a full character rig.
- */
 function drawCharacterRig(ctx: CanvasRenderingContext2D, rig: CharacterRig): void {
-  // 1. Draw head (circle)
   const head = rig.parts.head;
   if (head) {
     ctx.save();
@@ -47,374 +76,264 @@ function drawCharacterRig(ctx: CanvasRenderingContext2D, rig: CharacterRig): voi
     ctx.beginPath();
     ctx.arc(rig.x + head.pivotX, rig.y + head.pivotY, head.width / 2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#ffffff33';
+    ctx.strokeStyle = PALETTE.outlines;
+    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
   }
-
-  // 2. Draw torso and legs
+  if (rig.parts.backLeg) drawRigPart(ctx, rig.x, rig.y, rig.parts.backLeg);
   if (rig.parts.torso) drawRigPart(ctx, rig.x, rig.y, rig.parts.torso);
-  if (rig.parts.legs) drawRigPart(ctx, rig.x, rig.y, rig.parts.legs);
-
-  // 3. Draw arms / bat / bowling arm
+  if (rig.parts.frontLeg) drawRigPart(ctx, rig.x, rig.y, rig.parts.frontLeg);
   if (rig.parts.arms) drawRigPart(ctx, rig.x, rig.y, rig.parts.arms);
   if (rig.parts.bat) drawRigPart(ctx, rig.x, rig.y, rig.parts.bat);
   if (rig.parts.bowlingArm) drawRigPart(ctx, rig.x, rig.y, rig.parts.bowlingArm);
 }
 
-/**
- * Draws the street, buildings, wickets, and scene placeholders.
- */
-function drawEnvironment(ctx: CanvasRenderingContext2D, state: GameState): void {
-  const { width, height } = CONFIG.canvas;
-  const { groundY } = CONFIG.street;
-
-  // 1. Sky / Gully Street backdrop
-  ctx.fillStyle = CONFIG.colors.bg;
-  ctx.fillRect(0, 0, width, height);
-
-  // 2. Road surface
-  ctx.fillStyle = CONFIG.colors.road;
-  ctx.fillRect(0, groundY, width, height - groundY);
-
-  // Street pitch center crease / white chalk line
-  ctx.strokeStyle = CONFIG.colors.roadMarking;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(0, groundY);
-  ctx.lineTo(width, groundY);
-  ctx.stroke();
-
-  // Batting crease (chalk line)
-  ctx.strokeStyle = '#ffffff44';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(CONFIG.layout.batter.x - 30, groundY - 2, 60, 4);
-
-  // 3. Top-left building with window rect labelled "window"
-  const b = CONFIG.layout.building;
-  ctx.fillStyle = '#222834';
-  ctx.fillRect(b.x, b.y, b.width, b.height);
-  ctx.strokeStyle = '#343c4d';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(b.x, b.y, b.width, b.height);
-
-  // Aunty's Window
-  const w = CONFIG.layout.window;
-  const isBroken = state.lastResult?.isWindowBroken ?? false;
-  ctx.fillStyle = isBroken ? CONFIG.colors.windowBroken : CONFIG.colors.windowGlass;
-  ctx.fillRect(w.x, w.y, w.width, w.height);
-  ctx.strokeStyle = CONFIG.colors.windowFrame;
-  ctx.lineWidth = 4;
-  ctx.strokeRect(w.x, w.y, w.width, w.height);
-
-  // Window pane divider lines
-  ctx.beginPath();
-  ctx.moveTo(w.x + w.width / 2, w.y);
-  ctx.lineTo(w.x + w.width / 2, w.y + w.height);
-  ctx.moveTo(w.x, w.y + w.height / 2);
-  ctx.lineTo(w.x + w.width, w.y + w.height / 2);
-  ctx.stroke();
-
-  // "window" label placeholder
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('window', w.x + w.width / 2, w.y + w.height + 24);
-  if (isBroken) {
-    ctx.fillStyle = '#ff4d4d';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText('CRASHED!', w.x + w.width / 2, w.y + w.height / 2 + 6);
+function drawDynamicEffects(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const res = state.lastResult;
+  if (!res) return;
+  if (res.isWindowBroken) {
+    const w = CONFIG.layout.window;
+    ctx.save();
+    ctx.strokeStyle = PALETTE.ball;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w.x + 15, w.y + 15); ctx.lineTo(w.x + w.width / 2, w.y + w.height / 2); ctx.lineTo(w.x + w.width - 20, w.y + 25);
+    ctx.stroke();
+    ctx.restore();
   }
-
-  // 4. Bottom-right rect labelled "scooter"
-  const sc = CONFIG.layout.scooter;
-  const isScooterHit = state.lastResult?.isScooterHit ?? false;
-  ctx.fillStyle = isScooterHit ? '#c1121f' : CONFIG.colors.scooterBody;
-  ctx.fillRect(sc.x, sc.y, sc.width, sc.height);
-  ctx.strokeStyle = CONFIG.colors.scooterAccent;
-  ctx.lineWidth = 3;
-  ctx.strokeRect(sc.x, sc.y, sc.width, sc.height);
-
-  // "scooter" label placeholder
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('scooter', sc.x + sc.width / 2, sc.y + sc.height / 2 + 6);
-
-  // 5. Left: Wickets (stumps + bails)
-  const wk = CONFIG.layout.wicket;
-  ctx.fillStyle = CONFIG.colors.wicket;
-  // 3 stumps
-  const stumpWidth = 5;
-  const stumpSpacing = (wk.width - 3 * stumpWidth) / 2;
-  for (let i = 0; i < 3; i++) {
-    const sx = wk.x + i * (stumpWidth + stumpSpacing);
-    ctx.fillRect(sx, wk.y - wk.height, stumpWidth, wk.height);
+  if (res.isCarGlassBroken) {
+    const c = CONFIG.layout.car;
+    ctx.save();
+    ctx.strokeStyle = PALETTE.ball;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(c.x + 32, c.y + 6); ctx.lineTo(c.x + 48, c.y + 20);
+    ctx.stroke();
+    ctx.restore();
   }
-  // Bails
-  ctx.fillRect(wk.x - 2, wk.y - wk.height - 4, wk.width + 4, 4);
 }
 
-/**
- * Draws the tape ball.
- */
 function drawBall(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { ball } = state;
-  if (!ball.active && state.state !== 'HIT' && state.state !== 'BOWLING') {
-    return;
-  }
-
+  if (!ball.active && state.state !== 'HIT' && state.state !== 'BOWLING') return;
   ctx.save();
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-  ctx.fillStyle = CONFIG.colors.ball;
+  ctx.fillStyle = PALETTE.ball;
   ctx.fill();
-
-  // White electric tape seam running across the ball
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = CONFIG.colors.ballTape;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = PALETTE.roadLines;
+  ctx.stroke();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = PALETTE.outlines;
   ctx.stroke();
   ctx.restore();
 }
 
-/**
- * Draws the score, lives, timing result, and state messages.
- */
-function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
-  const { width } = CONFIG.canvas;
-
-  // 1. Top status bar (Score & Lives)
+/** Draws the screen-space HUD: Pill on top-left, outcome banner over street, debug if on */
+function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
   ctx.save();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(`RUNS: ${state.score}`, 30, 60);
 
-  // Lives display (Red hearts / counters)
-  ctx.textAlign = 'center';
-  const hearts = '♥ '.repeat(Math.max(0, state.lives)).trim();
-  ctx.fillStyle = '#ff4d6d';
-  ctx.font = 'bold 32px sans-serif';
-  ctx.fillText(`LIVES: ${hearts || '0'}`, width / 2, 60);
+  // 1. Top-left dark pill (#1E1E24 at 70% opacity, thin border, cream text)
+  const pillX = 20;
+  const pillY = 18;
+  const pillW = 280;
+  const pillH = 46;
+  const pillR = 23;
 
-  // Ball & Speed Info
-  ctx.fillStyle = CONFIG.colors.textSecondary;
-  ctx.font = '16px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(`BALL: #${state.ballCount} | SPEED: ${Math.round(state.currentBallSpeed)} px/s`, 30, 95);
+  ctx.fillStyle = 'rgba(30, 30, 36, 0.70)';
+  ctx.beginPath();
+  ctx.roundRect(pillX, pillY, pillW, pillH, pillR);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(245, 233, 207, 0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
 
-  // Debug Toggle Pill (Top-Right)
-  ctx.textAlign = 'right';
-  ctx.fillStyle = state.debugMode ? '#00f5d4' : '#64748b';
+  // Pill text: Score and Ball #
+  ctx.fillStyle = PALETTE.cream;
   ctx.font = 'bold 15px monospace';
-  ctx.fillText(`[D] DEBUG: ${state.debugMode ? 'ON' : 'OFF'}`, width - 30, 60);
-  ctx.restore();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`RUNS ${state.score}  B#${state.ballCount}`, pillX + 18, pillY + pillH / 2);
 
-  // 2. Prominent Timing Result Banner
+  // Lives as small tape ball icons (not heart text)
+  const ballStartX = pillX + 195;
+  const ballY = pillY + pillH / 2;
+  for (let i = 0; i < CONFIG.gameplay.initialLives; i++) {
+    const isAlive = i < state.lives;
+    const bx = ballStartX + i * 22;
+    ctx.beginPath();
+    ctx.arc(bx, ballY, 6.5, 0, Math.PI * 2);
+    ctx.fillStyle = isAlive ? PALETTE.ball : 'rgba(100, 100, 100, 0.4)';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = isAlive ? PALETTE.roadLines : 'rgba(150, 150, 150, 0.3)';
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = PALETTE.outlines;
+    ctx.stroke();
+  }
+
+  // 2. Outcome banner with scale-in animation, centered over street band, big white fill + dark outline
   if (state.lastResult) {
     const res = state.lastResult;
+    const streetCenterY = (600 - cam.worldTop) * cam.scale;
+    const bannerX = cam.cssWidth / 2;
+    const bannerY = Math.max(90, Math.min(cam.cssHeight - 80, streetCenterY));
+    const animProgress = Math.min(1, state.resultTimer / 0.28);
+    const scale = EASINGS.easeOutBack(animProgress);
+
     ctx.save();
+    ctx.translate(bannerX, bannerY);
+    ctx.scale(scale, scale);
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
-    // Outcome Tag Badge
-    let badgeColor = '#ffffff';
-    if (res.outcome === 'SIX') badgeColor = '#10b981'; // Green
-    else if (res.outcome === 'FOUR') badgeColor = '#06b6d4'; // Cyan
-    else if (res.outcome === 'SINGLE') badgeColor = '#eab308'; // Yellow
-    else if (res.outcome === 'SCOOTER') badgeColor = '#f97316'; // Orange
-    else if (res.outcome === 'WINDOW' || res.outcome === 'BOWLED') badgeColor = '#ef4444'; // Red
+    ctx.font = '900 46px sans-serif';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = PALETTE.outlines;
+    ctx.strokeText(res.description.toUpperCase(), 0, -12);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(res.description.toUpperCase(), 0, -12);
 
-    ctx.fillStyle = badgeColor;
-    ctx.font = 'bold 42px sans-serif';
-    ctx.fillText(res.description, width / 2, 160);
-
-    // Timing detail line (shows timing rating and offset in ms & px)
-    const sign = res.timingOffsetPx > 0 ? '+' : '';
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = 'bold 20px monospace';
-    ctx.fillText(
-      `TIMING: ${res.timingRating} (${sign}${Math.round(res.timingOffsetPx)}px / ${sign}${res.timingOffsetMs}ms)`,
-      width / 2,
-      200
-    );
+    if (state.debugMode) {
+      const sign = res.timingOffsetPx > 0 ? '+' : '';
+      const sub = `TIMING: ${res.timingRating} (${sign}${Math.round(res.timingOffsetPx)}px / ${sign}${res.timingOffsetMs}ms)`;
+      ctx.font = 'bold 18px monospace';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = PALETTE.outlines;
+      ctx.strokeText(sub, 0, 26);
+      ctx.fillStyle = PALETTE.cream;
+      ctx.fillText(sub, 0, 26);
+    }
     ctx.restore();
   }
 
-  // 3. State-specific overlays
-  ctx.save();
-  ctx.textAlign = 'center';
+  // 3. Debug text ONLY when debug mode (D) is on
+  if (state.debugMode) {
+    ctx.fillStyle = 'rgba(30, 30, 36, 0.85)';
+    ctx.fillRect(cam.cssWidth - 210, 18, 190, 70);
+    ctx.strokeStyle = '#00f5d4';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cam.cssWidth - 210, 18, 190, 70);
 
-  if (state.state === 'TITLE') {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-    ctx.fillRect(0, 0, width, CONFIG.canvas.height);
+    ctx.fillStyle = '#00f5d4';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('DEBUG MODE ON [D]', cam.cssWidth - 200, 36);
+    ctx.fillStyle = PALETTE.cream;
+    ctx.fillText(`Scale: ${cam.scale.toFixed(2)} | DPR: ${cam.dpr}`, cam.cssWidth - 200, 54);
+    ctx.fillText(`Speed: ${Math.round(state.currentBallSpeed)} px/s`, cam.cssWidth - 200, 72);
+  }
 
-    ctx.fillStyle = '#facc15';
-    ctx.font = 'bold 46px sans-serif';
-    ctx.fillText('GULLY CRICKET', width / 2, 520);
+  // Title / Game Over Screen Overlay
+  if (state.state === 'TITLE' || state.state === 'GAME_OVER') {
+    ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
+    ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
+    ctx.textAlign = 'center';
+    const cx = cam.cssWidth / 2;
+    const cy = cam.cssHeight / 2;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '22px sans-serif';
-    ctx.fillText('Neighborhood Chaos', width / 2, 565);
-
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 26px sans-serif';
-    ctx.fillText('TAP OR PRESS SPACE TO BOWL', width / 2, 660);
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '16px sans-serif';
-    ctx.fillText('Watch out for Aunty’s Window and the Activa!', width / 2, 710);
-    ctx.fillText('Press [D] to toggle Timing Window Debugger', width / 2, 740);
-  } else if (state.state === 'GAME_OVER') {
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.fillRect(0, 0, width, CONFIG.canvas.height);
-
-    ctx.fillStyle = '#ef4444';
-    ctx.font = 'bold 50px sans-serif';
-    ctx.fillText('GAME OVER', width / 2, 520);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 30px monospace';
-    ctx.fillText(`FINAL SCORE: ${state.score} RUNS`, width / 2, 580);
-
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillText('TAP OR PRESS SPACE TO RETRY', width / 2, 660);
+    if (state.state === 'TITLE') {
+      ctx.fillStyle = PALETTE.buildingA;
+      ctx.font = '900 48px sans-serif';
+      ctx.fillText('GULLY CRICKET', cx, cy - 40);
+      ctx.fillStyle = PALETTE.cream;
+      ctx.font = '20px sans-serif';
+      ctx.fillText('Neighborhood Chaos', cx, cy - 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('TAP OR PRESS SPACE TO BOWL', cx, cy + 60);
+    } else {
+      ctx.fillStyle = PALETTE.ball;
+      ctx.font = '900 52px sans-serif';
+      ctx.fillText('GAME OVER', cx, cy - 40);
+      ctx.fillStyle = PALETTE.cream;
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText(`FINAL SCORE: ${state.score} RUNS`, cx, cy + 10);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('TAP OR PRESS SPACE TO RETRY', cx, cy + 65);
+    }
   }
   ctx.restore();
 }
 
-/**
- * Draws the debug timing window on the pitch when 'D' is pressed.
- * Visualizes the exact zones: PERFECT (SIX), GOOD (FOUR), SINGLE, SCOOTER, WINDOW.
- */
-function drawDebugOverlay(ctx: CanvasRenderingContext2D, state: GameState): void {
+function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (!state.debugMode) return;
-
   const sweetX = CONFIG.layout.sweetSpot.x;
-  const sweetY = CONFIG.layout.sweetSpot.y;
   const groundY = CONFIG.street.groundY;
   const t = CONFIG.timing;
+  const zoneY = groundY + 14;
 
   ctx.save();
-
-  // 1. Draw sweet spot center line
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 2;
   ctx.setLineDash([4, 4]);
-  ctx.beginPath();
-  ctx.moveTo(sweetX, groundY - 140);
-  ctx.lineTo(sweetX, groundY + 40);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sweetX, groundY - 140); ctx.lineTo(sweetX, groundY + 40); ctx.stroke();
   ctx.setLineDash([]);
 
-  // Sweet spot crosshair
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(sweetX, sweetY, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 13px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('SWEET SPOT', sweetX, groundY - 150);
-
-  // 2. Color-coded zone brackets along the street pitch
-  // Note: Ball travels right-to-left (+offset is right/early, -offset is left/late)
-  const zoneY = groundY + 12;
-  const zoneHeight = 24;
-
-  const drawZone = (minOffset: number, maxOffset: number, color: string, label: string) => {
-    const x1 = sweetX + minOffset;
-    const x2 = sweetX + maxOffset;
-    const startX = Math.min(x1, x2);
-    const boxWidth = Math.abs(x2 - x1);
-
-    ctx.fillStyle = color;
-    ctx.fillRect(startX, zoneY, boxWidth, zoneHeight);
+  const drawZone = (minO: number, maxO: number, col: string, lbl: string) => {
+    const x1 = sweetX + minO;
+    const x2 = sweetX + maxO;
+    const sx = Math.min(x1, x2);
+    const w = Math.abs(x2 - x1);
+    ctx.fillStyle = col;
+    ctx.fillRect(sx, zoneY, w, 22);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
-    ctx.strokeRect(startX, zoneY, boxWidth, zoneHeight);
-
+    ctx.strokeRect(sx, zoneY, w, 22);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, startX + boxWidth / 2, zoneY + 16);
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(lbl, sx + w / 2 - 8, zoneY + 15);
   };
 
-  // Aunty's Window (+125px to +190px)
-  drawZone(t.windowMinOffset, t.windowMaxOffset, 'rgba(239, 68, 68, 0.8)', 'WINDOW');
-  // Early Single (+65px to +125px)
+  drawZone(t.windowMinOffset, t.windowMaxOffset, 'rgba(214, 40, 40, 0.85)', 'WIN');
   drawZone(t.fourEarlyTolerance, t.singleEarlyTolerance, 'rgba(234, 179, 8, 0.8)', '1');
-  // Early Four (+20px to +65px)
   drawZone(t.sixTolerance, t.fourEarlyTolerance, 'rgba(6, 182, 212, 0.8)', '4');
-  // PERFECT SIX (-20px to +20px)
   drawZone(-t.sixTolerance, t.sixTolerance, 'rgba(16, 185, 129, 0.9)', '6');
-  // Late Four (-20px to -55px)
   drawZone(-t.sixTolerance, -t.fourLateTolerance, 'rgba(6, 182, 212, 0.8)', '4');
-  // Late Single (-55px to -90px)
   drawZone(-t.fourLateTolerance, -t.singleLateTolerance, 'rgba(234, 179, 8, 0.8)', '1');
-  // Scooter (-90px to -145px)
-  drawZone(-t.scooterMinOffset, -t.scooterMaxOffset, 'rgba(249, 115, 22, 0.8)', 'SCOOTER');
+  drawZone(-t.scooterMinOffset, -t.scooterMaxOffset, 'rgba(249, 115, 22, 0.85)', 'CAR');
 
-  // 3. Current Ball indicator line
   if (state.ball.active || state.state === 'BOWLING') {
     ctx.strokeStyle = '#facc15';
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(state.ball.x, groundY - 120);
-    ctx.lineTo(state.ball.x, zoneY + zoneHeight + 20);
-    ctx.stroke();
-
-    const currOffset = state.ball.x - sweetX;
-    const sign = currOffset > 0 ? '+' : '';
-    ctx.fillStyle = '#facc15';
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(`BALL (${sign}${Math.round(currOffset)}px)`, state.ball.x, zoneY + zoneHeight + 35);
+    ctx.beginPath(); ctx.moveTo(state.ball.x, groundY - 80); ctx.lineTo(state.ball.x, zoneY + 36); ctx.stroke();
   }
-
-  // 4. Debug Metrics Telemetry Box (Top-Left)
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.fillRect(20, 110, 260, 95);
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(20, 110, 260, 95);
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 13px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('TIMING DEBUGGER [D to close]', 30, 130);
-
-  ctx.fillStyle = '#e2e8f0';
-  ctx.font = '12px monospace';
-  const currOffset = Math.round(state.ball.x - sweetX);
-  const offsetMs = Math.round((currOffset / state.currentBallSpeed) * 1000);
-  ctx.fillText(`Ball X: ${Math.round(state.ball.x)} | SweetSpot: ${sweetX}`, 30, 150);
-  ctx.fillText(`Current Offset: ${currOffset > 0 ? '+' : ''}${currOffset}px (${offsetMs}ms)`, 30, 170);
-  ctx.fillText(`Ball Speed: ${Math.round(state.currentBallSpeed)} px/s`, 30, 190);
-
   ctx.restore();
 }
 
-/**
- * Main render function. Call this every animation frame.
- */
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState): void {
-  ctx.clearRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
+export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
+  // Clear entire backing canvas
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  // 1. Street, background, and environmental placeholders
-  drawEnvironment(ctx, state);
+  // Apply camera transform to render 1600x800 world
+  ctx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
 
-  // 2. Character rigs (Batter on left, Bowler on right)
+  // If portrait phone: fill extra vertical space above with sky, below with asphalt (no letterboxing)
+  if (cam.isPortraitPhone) {
+    ctx.fillStyle = PALETTE.skyTop;
+    ctx.fillRect(cam.worldLeft - 100, cam.worldTop - 200, cam.visibleWorldWidth + 200, -cam.worldTop + 200);
+    ctx.fillStyle = PALETTE.asphalt;
+    ctx.fillRect(cam.worldLeft - 100, CONFIG.world.height, cam.visibleWorldWidth + 200, cam.visibleWorldHeight + 200);
+  }
+
+  // 1. Static scene blit
+  ctx.drawImage(getStaticScene(), 0, 0);
+
+  // 2. Dynamic objects
+  drawDynamicEffects(ctx, state);
+  drawCharacterRig(ctx, state.fielder1Rig);
+  drawCharacterRig(ctx, state.fielder2Rig);
   drawCharacterRig(ctx, state.batterRig);
   drawCharacterRig(ctx, state.bowlerRig);
-
-  // 3. Tape ball
   drawBall(ctx, state);
+  drawWorldDebug(ctx, state);
 
-  // 4. HUD, Score, Lives, Outcome labels
-  drawHUD(ctx, state);
-
-  // 5. Debug overlay (toggled with 'D')
-  drawDebugOverlay(ctx, state);
+  // 3. Screen-space HUD
+  ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
+  drawHUD(ctx, state, cam);
 }
