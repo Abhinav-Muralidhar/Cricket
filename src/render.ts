@@ -30,7 +30,6 @@ function getStaticScene(): HTMLCanvasElement {
 
 export function computeCamera(cssWidth: number, cssHeight: number, dpr: number): CameraViewport {
   const worldH = CONFIG.world.height;
-  const actionCenter = CONFIG.world.actionCenterX;
   const fitHScale = cssHeight / worldH;
   const rawVisibleWidth = cssWidth / fitHScale;
 
@@ -45,14 +44,13 @@ export function computeCamera(cssWidth: number, cssHeight: number, dpr: number):
     scale = cssWidth / CONFIG.world.minVisibleWidth;
     visibleWorldWidth = CONFIG.world.minVisibleWidth;
     visibleWorldHeight = cssHeight / scale;
-    worldTop = -(visibleWorldHeight - worldH) * 0.42; // Extra sky above, extra street below
+    worldTop = -(visibleWorldHeight - worldH) * 0.42;
   } else {
     visibleWorldWidth = Math.min(CONFIG.world.maxVisibleWidth, rawVisibleWidth);
     scale = cssHeight / worldH;
-    worldTop = 0;
   }
 
-  const worldLeft = actionCenter - visibleWorldWidth / 2;
+  const worldLeft = CONFIG.world.actionCenterX - visibleWorldWidth / 2;
   return { scale, dpr, cssWidth, cssHeight, worldLeft, worldTop, visibleWorldWidth, visibleWorldHeight, isPortraitPhone };
 }
 
@@ -81,12 +79,9 @@ function drawCharacterRig(ctx: CanvasRenderingContext2D, rig: CharacterRig): voi
     ctx.stroke();
     ctx.restore();
   }
-  if (rig.parts.backLeg) drawRigPart(ctx, rig.x, rig.y, rig.parts.backLeg);
-  if (rig.parts.torso) drawRigPart(ctx, rig.x, rig.y, rig.parts.torso);
-  if (rig.parts.frontLeg) drawRigPart(ctx, rig.x, rig.y, rig.parts.frontLeg);
-  if (rig.parts.arms) drawRigPart(ctx, rig.x, rig.y, rig.parts.arms);
-  if (rig.parts.bat) drawRigPart(ctx, rig.x, rig.y, rig.parts.bat);
-  if (rig.parts.bowlingArm) drawRigPart(ctx, rig.x, rig.y, rig.parts.bowlingArm);
+  for (const k of ['backLeg', 'torso', 'frontLeg', 'arms', 'bat', 'bowlingArm']) {
+    if (rig.parts[k]) drawRigPart(ctx, rig.x, rig.y, rig.parts[k]);
+  }
 }
 
 function drawDynamicEffects(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -108,7 +103,7 @@ function drawDynamicEffects(ctx: CanvasRenderingContext2D, state: GameState): vo
     ctx.strokeStyle = PALETTE.ball;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(c.x + 32, c.y + 6); ctx.lineTo(c.x + 48, c.y + 20);
+    ctx.moveTo(c.x + 55, c.y + 8); ctx.lineTo(c.x + 75, c.y + 24);
     ctx.stroke();
     ctx.restore();
   }
@@ -131,61 +126,51 @@ function drawBall(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 }
 
-/** Draws the screen-space HUD: Pill on top-left, outcome banner over street, debug if on */
 function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
   ctx.save();
 
-  // 1. Top-left dark pill (#1E1E24 at 70% opacity, thin border, cream text)
+  // 1. Top-left dark pill (#1E1E24 at 70% opacity, cream text, thin border)
   const pillX = 20;
   const pillY = 18;
   const pillW = 280;
   const pillH = 46;
-  const pillR = 23;
 
   ctx.fillStyle = 'rgba(30, 30, 36, 0.70)';
   ctx.beginPath();
-  ctx.roundRect(pillX, pillY, pillW, pillH, pillR);
+  ctx.roundRect(pillX, pillY, pillW, pillH, 23);
   ctx.fill();
   ctx.strokeStyle = 'rgba(245, 233, 207, 0.35)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Pill text: Score and Ball #
   ctx.fillStyle = PALETTE.cream;
   ctx.font = 'bold 15px monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(`RUNS ${state.score}  B#${state.ballCount}`, pillX + 18, pillY + pillH / 2);
 
-  // Lives as small tape ball icons (not heart text)
-  const ballStartX = pillX + 195;
-  const ballY = pillY + pillH / 2;
+  // Lives as small tape ball icons
   for (let i = 0; i < CONFIG.gameplay.initialLives; i++) {
-    const isAlive = i < state.lives;
-    const bx = ballStartX + i * 22;
+    const bx = pillX + 195 + i * 22;
+    const by = pillY + pillH / 2;
+    const alive = i < state.lives;
     ctx.beginPath();
-    ctx.arc(bx, ballY, 6.5, 0, Math.PI * 2);
-    ctx.fillStyle = isAlive ? PALETTE.ball : 'rgba(100, 100, 100, 0.4)';
+    ctx.arc(bx, by, 6.5, 0, Math.PI * 2);
+    ctx.fillStyle = alive ? PALETTE.ball : 'rgba(100, 100, 100, 0.4)';
     ctx.fill();
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = isAlive ? PALETTE.roadLines : 'rgba(150, 150, 150, 0.3)';
-    ctx.stroke();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = PALETTE.outlines;
+    ctx.strokeStyle = alive ? PALETTE.roadLines : 'rgba(150, 150, 150, 0.3)';
     ctx.stroke();
   }
 
-  // 2. Outcome banner with scale-in animation, centered over street band, big white fill + dark outline
+  // 2. Big white outcome banner with scale-in animation centered over street
   if (state.lastResult) {
     const res = state.lastResult;
-    const streetCenterY = (600 - cam.worldTop) * cam.scale;
-    const bannerX = cam.cssWidth / 2;
-    const bannerY = Math.max(90, Math.min(cam.cssHeight - 80, streetCenterY));
-    const animProgress = Math.min(1, state.resultTimer / 0.28);
-    const scale = EASINGS.easeOutBack(animProgress);
+    const bannerY = Math.max(90, Math.min(cam.cssHeight - 80, (600 - cam.worldTop) * cam.scale));
+    const scale = EASINGS.easeOutBack(Math.min(1, state.resultTimer / 0.28));
 
     ctx.save();
-    ctx.translate(bannerX, bannerY);
+    ctx.translate(cam.cssWidth / 2, bannerY);
     ctx.scale(scale, scale);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -213,18 +198,16 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraVie
   // 3. Debug text ONLY when debug mode (D) is on
   if (state.debugMode) {
     ctx.fillStyle = 'rgba(30, 30, 36, 0.85)';
-    ctx.fillRect(cam.cssWidth - 210, 18, 190, 70);
+    ctx.fillRect(cam.cssWidth - 210, 18, 190, 68);
     ctx.strokeStyle = '#00f5d4';
     ctx.lineWidth = 1;
-    ctx.strokeRect(cam.cssWidth - 210, 18, 190, 70);
-
+    ctx.strokeRect(cam.cssWidth - 210, 18, 190, 68);
     ctx.fillStyle = '#00f5d4';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'left';
     ctx.fillText('DEBUG MODE ON [D]', cam.cssWidth - 200, 36);
     ctx.fillStyle = PALETTE.cream;
     ctx.fillText(`Scale: ${cam.scale.toFixed(2)} | DPR: ${cam.dpr}`, cam.cssWidth - 200, 54);
-    ctx.fillText(`Speed: ${Math.round(state.currentBallSpeed)} px/s`, cam.cssWidth - 200, 72);
   }
 
   // Title / Game Over Screen Overlay
@@ -306,14 +289,11 @@ function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState): void {
 }
 
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
-  // Clear entire backing canvas
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  // Apply camera transform to render 1600x800 world
   ctx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
 
-  // If portrait phone: fill extra vertical space above with sky, below with asphalt (no letterboxing)
   if (cam.isPortraitPhone) {
     ctx.fillStyle = PALETTE.skyTop;
     ctx.fillRect(cam.worldLeft - 100, cam.worldTop - 200, cam.visibleWorldWidth + 200, -cam.worldTop + 200);
