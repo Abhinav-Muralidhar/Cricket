@@ -13,6 +13,10 @@ export interface InputHandlers {
   onCycleEditorCharacter?: () => void;
   onStepKeyframe?: (dir: -1 | 1) => void;
   isPoseEditorActive?: () => boolean;
+  onDebugKey?: (code: string) => boolean;
+  onCycle3DCharacter?: () => void;
+  onNudge3DCharacter?: (dx: number, dy: number, dYaw: number) => void;
+  is3DMode?: () => boolean;
 }
 
 export class InputManager {
@@ -76,6 +80,12 @@ export class InputManager {
         return;
       }
 
+      // Check 1-9 debug clip keys
+      if (this.handlers.onDebugKey?.(e.code)) {
+        e.preventDefault();
+        return;
+      }
+
       if (e.code === 'Space') {
         e.preventDefault();
         this.handlers.onAction();
@@ -87,23 +97,39 @@ export class InputManager {
         this.handlers.onPreviewToggle();
       } else if (e.code === 'Tab' || e.code === 'KeyT') {
         e.preventDefault();
-        if (this.handlers.onCycleTarget) this.handlers.onCycleTarget();
+        if (this.handlers.is3DMode?.() && this.handlers.onCycle3DCharacter) {
+          this.handlers.onCycle3DCharacter();
+        } else if (this.handlers.onCycleTarget) {
+          this.handlers.onCycleTarget();
+        }
       } else if (e.code.startsWith('Arrow')) {
         e.preventDefault();
         const step = e.shiftKey ? 5 : 1;
-        let dx = 0, dy = 0, dw = 0, dh = 0;
-        if (e.altKey) {
-          if (e.code === 'ArrowLeft') dw = -step;
-          else if (e.code === 'ArrowRight') dw = step;
-          else if (e.code === 'ArrowUp') dh = -step;
-          else if (e.code === 'ArrowDown') dh = step;
-        } else {
-          if (e.code === 'ArrowLeft') dx = -step;
-          else if (e.code === 'ArrowRight') dx = step;
-          else if (e.code === 'ArrowUp') dy = -step;
-          else if (e.code === 'ArrowDown') dy = step;
-        }
-        if (this.handlers.onNudgeTarget) {
+        if (this.handlers.is3DMode?.() && this.handlers.onNudge3DCharacter) {
+          let dx = 0, dy = 0, dYaw = 0;
+          if (e.altKey) {
+            if (e.code === 'ArrowLeft') dYaw = -0.05 * step;
+            else if (e.code === 'ArrowRight') dYaw = 0.05 * step;
+          } else {
+            if (e.code === 'ArrowLeft') dx = -2 * step;
+            else if (e.code === 'ArrowRight') dx = 2 * step;
+            else if (e.code === 'ArrowUp') dy = -2 * step;
+            else if (e.code === 'ArrowDown') dy = 2 * step;
+          }
+          this.handlers.onNudge3DCharacter(dx, dy, dYaw);
+        } else if (this.handlers.onNudgeTarget) {
+          let dx = 0, dy = 0, dw = 0, dh = 0;
+          if (e.altKey) {
+            if (e.code === 'ArrowLeft') dw = -step;
+            else if (e.code === 'ArrowRight') dw = step;
+            else if (e.code === 'ArrowUp') dh = -step;
+            else if (e.code === 'ArrowDown') dh = step;
+          } else {
+            if (e.code === 'ArrowLeft') dx = -step;
+            else if (e.code === 'ArrowRight') dx = step;
+            else if (e.code === 'ArrowUp') dy = -step;
+            else if (e.code === 'ArrowDown') dy = step;
+          }
           this.handlers.onNudgeTarget(dx, dy, dw, dh);
         }
       }

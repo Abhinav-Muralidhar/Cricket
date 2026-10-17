@@ -106,36 +106,61 @@ function drawBall(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 }
 
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+import type { Characters3DManager } from './characters3d.ts';
+
+export function renderGame(
+  bgCtx: CanvasRenderingContext2D,
+  hudCtx: CanvasRenderingContext2D,
+  state: GameState,
+  cam: CameraViewport,
+  characters3D?: Characters3DManager
+): void {
+  bgCtx.setTransform(1, 0, 0, 1, 0, 0);
+  bgCtx.clearRect(0, 0, bgCtx.canvas.width, bgCtx.canvas.height);
+  hudCtx.setTransform(1, 0, 0, 1, 0, 0);
+  hudCtx.clearRect(0, 0, hudCtx.canvas.width, hudCtx.canvas.height);
 
   if (cam.isPortraitPhone) {
-    drawRotatePhoneOverlay(ctx, cam);
+    drawRotatePhoneOverlay(hudCtx, cam);
     return;
   }
 
-  // 1. World-space transform
-  ctx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
+  // 1. Layer 1: 2D Background
+  bgCtx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
+  drawBackground(bgCtx, cam);
 
-  // 2. Illustrated background with soft asphalt extension (covers 100% width)
-  drawBackground(ctx, cam);
+  // 2. Layer 2: 3D Characters via Three.js
+  if (CONFIG.use3DCharacters && characters3D) {
+    characters3D.render(cam);
+    if (!characters3D.isReady) {
+      hudCtx.save();
+      hudCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      hudCtx.fillRect(cam.cssWidth * cam.dpr / 2 - 120, 20, 240, 36);
+      hudCtx.fillStyle = '#FFD9A0';
+      hudCtx.font = 'bold 14px system-ui, sans-serif';
+      hudCtx.textAlign = 'center';
+      hudCtx.fillText('Loading 3D Characters...', cam.cssWidth * cam.dpr / 2, 44);
+      hudCtx.restore();
+    }
+  }
 
-  // 3. Dynamic effects, wickets, and characters
-  drawDynamicEffects(ctx, state);
+  // 3. Layer 3: 2D dynamic effects, wickets, ball, and optional 2D fallback rigs
+  hudCtx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
+  drawDynamicEffects(hudCtx, state);
 
-  drawCharacter(ctx, state.fielder3Rig);
-  drawCharacter(ctx, state.fielder2Rig);
-  drawCharacter(ctx, state.fielder1Rig);
+  if (!CONFIG.use3DCharacters) {
+    drawCharacter(hudCtx, state.fielder3Rig);
+    drawCharacter(hudCtx, state.fielder2Rig);
+    drawCharacter(hudCtx, state.fielder1Rig);
+    drawCharacter(hudCtx, state.batterRig, state.squashX, state.squashY);
+    drawCharacter(hudCtx, state.bowlerRig);
+  }
 
-  drawWickets(ctx);
-  drawCharacter(ctx, state.batterRig, state.squashX, state.squashY);
-  drawCharacter(ctx, state.bowlerRig);
-
-  drawBall(ctx, state);
-  drawWorldDebug(ctx, state);
+  drawWickets(hudCtx);
+  drawBall(hudCtx, state);
+  drawWorldDebug(hudCtx, state);
 
   // 4. Screen-space HUD
-  ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
-  drawHUD(ctx, state, cam);
+  hudCtx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
+  drawHUD(hudCtx, state, cam);
 }

@@ -123,6 +123,13 @@ export interface GameConfig {
     resultPauseDurationSec: number;
     hitFlightDurationSec: number;
   };
+  use3DCharacters: boolean;
+  outline3D: boolean;
+  pitchReleaseTime: number;
+  swingStartOffset: number;
+  swingTimeScale: number;
+  characters3D: Record<string, { yaw: number; scale: number; isLeftHanded?: boolean }>;
+  colors3D: { batter: string; bowler: string; fielder1: string; fielder2: string; fielder3: string };
   colors: {
     bg: string;
     road: string;
@@ -203,6 +210,21 @@ export const CONFIG: GameConfig = {
     swingDurationSec: 0.22,
     resultPauseDurationSec: 1.4,
     hitFlightDurationSec: 1.1,
+  },
+  use3DCharacters: true,
+  outline3D: true,
+  pitchReleaseTime: 0.42,
+  swingStartOffset: 0.18,
+  swingTimeScale: 1.3,
+  characters3D: {
+    batter: { yaw: Math.PI / 2, scale: 1.0, isLeftHanded: false },
+    bowler: { yaw: -Math.PI / 2, scale: 1.0 },
+    fielder1: { yaw: -Math.PI * 0.60, scale: 0.85 },
+    fielder2: { yaw: -Math.PI * 0.45, scale: 0.85 },
+    fielder3: { yaw: -Math.PI * 0.55, scale: 0.85 },
+  },
+  colors3D: {
+    batter: '#3B6FD6', bowler: '#EAB308', fielder1: '#0D9488', fielder2: '#F97316', fielder3: '#881337',
   },
   colors: {
     bg: PALETTE.skyBottom,

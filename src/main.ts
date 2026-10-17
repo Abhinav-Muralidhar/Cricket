@@ -11,15 +11,21 @@ import { InputManager } from './input.ts';
 import { PoseEditor } from './pose-editor.ts';
 import type { HitTargetKey } from './types.ts';
 
+import { Characters3DManager } from './characters3d.ts';
+
 function initGame(): void {
-  const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-  if (!canvas) throw new Error('Canvas element #game-canvas not found');
+  const bgCanvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+  const threeCanvas = document.getElementById('three-canvas') as HTMLCanvasElement;
+  const hudCanvas = document.getElementById('hud-canvas') as HTMLCanvasElement;
+  if (!bgCanvas || !threeCanvas || !hudCanvas) throw new Error('Canvas elements missing in DOM');
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Unable to obtain 2D canvas context');
+  const bgCtx = bgCanvas.getContext('2d');
+  const hudCtx = hudCanvas.getContext('2d');
+  if (!bgCtx || !hudCtx) throw new Error('Unable to obtain 2D canvas context');
 
-  // Preload illustrated background image
+  // Preload illustrated background image and instantiate 3D characters
   loadBackgroundImage();
+  const characters3D = new Characters3DManager(threeCanvas);
 
   const state = createInitialState();
   let camera: CameraViewport;
@@ -30,8 +36,10 @@ function initGame(): void {
     const cssW = window.innerWidth;
     const cssH = window.innerHeight;
 
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
+    [bgCanvas, threeCanvas, hudCanvas].forEach((c) => {
+      c.width = Math.round(cssW * dpr);
+      c.height = Math.round(cssH * dpr);
+    });
 
     state.isPortrait = cssH > cssW;
     camera = computeCamera(cssW, cssH, dpr);
@@ -40,14 +48,14 @@ function initGame(): void {
   resize();
   window.addEventListener('resize', resize);
 
-  // Input manager: clicks/taps, debug toggle, target cycling, and pose editor
-  new InputManager(canvas, {
+  // Input manager: pointer on top hudCanvas, debug toggles, 1-9 clips, 3D nudging
+  new InputManager(hudCanvas, {
     onAction: () => handlePlayerSwing(state),
     onDebugToggle: () => {
       state.debugMode = !state.debugMode;
       if (state.debugMode) {
-        console.log(`[DEBUG MODE ON] Selected target: ${state.selectedHitTarget.toUpperCase()}`);
-        console.log('Press E for Pose Editor. Tab/T to cycle targets. Arrow keys to nudge.');
+        console.log(`[DEBUG MODE ON] Selected: ${characters3D.selectedDebugChar.toUpperCase()}`);
+        console.log('Press 1-9 to test 3D clips on batter. Tab to cycle characters. Arrow keys to nudge (Alt: yaw). E for 2D pose editor.');
       }
     },
     onPreviewToggle: () => cycleBatterPreviewClip(state),
@@ -78,6 +86,10 @@ function initGame(): void {
     onCycleEditorCharacter: () => poseEditor.cycleCharacter(),
     onStepKeyframe: (dir) => poseEditor.stepKeyframe(dir),
     isPoseEditorActive: () => poseEditor.isOpen(),
+    onDebugKey: (code: string) => (state.debugMode && CONFIG.use3DCharacters ? characters3D.handleDebugKey(code) : false),
+    onCycle3DCharacter: () => characters3D.cycleDebugCharacter(),
+    onNudge3DCharacter: (dx, dy, dYaw) => characters3D.nudgeDebugCharacter(dx, dy, dYaw),
+    is3DMode: () => state.debugMode && CONFIG.use3DCharacters,
   });
 
   let lastTime = performance.now();
@@ -88,10 +100,13 @@ function initGame(): void {
 
     if (poseEditor.isOpen()) {
       poseEditor.update(dt);
-      poseEditor.render(ctx!, camera);
+      poseEditor.render(hudCtx!, camera);
     } else {
       updateGame(state, dt);
-      renderGame(ctx!, state, camera);
+      if (CONFIG.use3DCharacters) {
+        characters3D.update(dt, state);
+      }
+      renderGame(bgCtx!, hudCtx!, state, camera, characters3D);
     }
 
     requestAnimationFrame(loop);
