@@ -10,22 +10,22 @@ import type { Clip, Pose } from './animation.ts';
 // ---------------------------------------------------------------------------
 
 export const BATTER_POSES: Record<string, Pose> = {
-  // Relaxed batting stance in crease
-  idle1: { head: 0.0, torso: -0.05, frontLeg: 0.08, backLeg: -0.08, arms: -0.30, bat: -0.40 },
-  idle2: { head: 0.02, torso: -0.07, frontLeg: 0.08, backLeg: -0.08, arms: -0.32, bat: -0.42 },
+  // Relaxed batting stance in crease with subtle breathing
+  idle1: { head: -0.04, torso: -0.06, frontLeg: 0.08, backLeg: -0.08, arms: -0.35, bat: -0.45 },
+  idle2: { head: -0.02, torso: -0.10, frontLeg: 0.10, backLeg: -0.06, arms: -0.40, bat: -0.52 },
 
-  // Cocking bat back as bowler approaches
-  backlift1: { head: 0.02, torso: -0.10, frontLeg: 0.12, backLeg: -0.10, arms: -0.60, bat: -0.80 },
-  backlift2: { head: 0.05, torso: -0.16, frontLeg: 0.18, backLeg: -0.12, arms: -0.90, bat: -1.15 },
+  // Cocking bat back with weight shifted back as bowler approaches
+  backlift1: { head: -0.02, torso: -0.12, frontLeg: 0.14, backLeg: -0.12, arms: -0.65, bat: -0.85 },
+  backlift2: { head: 0.02, torso: -0.18, frontLeg: 0.20, backLeg: -0.15, arms: -0.95, bat: -1.25 },
 
-  // High-speed downswing (about 300ms)
-  swingStart: { head: 0.04, torso: -0.12, frontLeg: 0.16, backLeg: -0.12, arms: -0.80, bat: -1.00 },
-  swingImpact: { head: -0.02, torso: 0.10, frontLeg: 0.32, backLeg: -0.20, arms: 0.30, bat: 0.35 },
-  swingFollow: { head: -0.08, torso: 0.25, frontLeg: 0.40, backLeg: -0.25, arms: 1.15, bat: 1.45 },
+  // High-speed downswing with full body lean into the stroke
+  swingStart: { head: 0.02, torso: -0.14, frontLeg: 0.18, backLeg: -0.14, arms: -0.85, bat: -1.10 },
+  swingImpact: { head: -0.04, torso: 0.22, frontLeg: 0.40, backLeg: -0.30, arms: 0.45, bat: 0.50 },
+  swingFollow: { head: -0.12, torso: 0.38, frontLeg: 0.48, backLeg: -0.35, arms: 1.35, bat: 1.75 },
 
-  // Elegant high finish hold
-  finishHold1: { head: -0.18, torso: 0.28, frontLeg: 0.38, backLeg: -0.22, arms: 1.35, bat: 1.70 },
-  finishHold2: { head: -0.15, torso: 0.26, frontLeg: 0.38, backLeg: -0.22, arms: 1.30, bat: 1.65 },
+  // Follow-through overshoot & high finish hold
+  finishHold1: { head: -0.22, torso: 0.42, frontLeg: 0.45, backLeg: -0.32, arms: 1.55, bat: 2.05 },
+  finishHold2: { head: -0.18, torso: 0.38, frontLeg: 0.45, backLeg: -0.32, arms: 1.48, bat: 1.95 },
 
   // Dejection: head hangs, arms drop limp, bat rests sad
   bowledDejected: { head: 0.65, torso: 0.35, frontLeg: 0.05, backLeg: 0.05, arms: 0.25, bat: 0.12 },
@@ -54,11 +54,11 @@ export const BATTER_CLIPS: Record<string, Clip> = {
   },
   swing: {
     name: 'swing',
-    duration: 0.3, // ~300 ms fast swing
+    duration: 0.3, // ~300 ms fast swing with overshoot
     loop: false,
     keyframes: [
       { t: 0.0, pose: BATTER_POSES.swingStart, easing: 'easeOutBack' },
-      { t: 0.5, pose: BATTER_POSES.swingImpact, easing: 'easeOutBack' },
+      { t: 0.45, pose: BATTER_POSES.swingImpact, easing: 'easeOutBack' },
       { t: 1.0, pose: BATTER_POSES.swingFollow, easing: 'easeOutBack' },
     ],
   },
@@ -68,7 +68,7 @@ export const BATTER_CLIPS: Record<string, Clip> = {
     loop: false,
     keyframes: [
       { t: 0.0, pose: BATTER_POSES.swingFollow, easing: 'easeOut' },
-      { t: 0.4, pose: BATTER_POSES.finishHold1, easing: 'easeInOut' },
+      { t: 0.35, pose: BATTER_POSES.finishHold1, easing: 'easeInOut' },
       { t: 1.0, pose: BATTER_POSES.finishHold2, easing: 'easeInOut' },
     ],
   },
@@ -89,20 +89,21 @@ export const BATTER_CLIPS: Record<string, Clip> = {
 // ---------------------------------------------------------------------------
 
 export const BOWLER_POSES: Record<string, Pose> = {
-  idle: { head: 0.0, torso: 0.05, frontLeg: 0.05, backLeg: -0.05, arms: -0.25, bowlingArm: 0.40 },
+  // Idle stance: bowling arm rests naturally down by hip holding the ball
+  idle: { head: 0.0, torso: 0.04, frontLeg: 0.05, backLeg: -0.05, arms: 0.10, bowlingArm: 0.08 },
 
-  // Run-up strides (leg/arm pump cycle)
-  run1: { head: 0.05, torso: 0.16, frontLeg: 0.55, backLeg: -0.55, arms: -0.45, bowlingArm: 0.65 },
-  run2: { head: 0.02, torso: 0.12, frontLeg: -0.50, backLeg: 0.50, arms: 0.45, bowlingArm: -0.35 },
-  runGather: { head: 0.04, torso: 0.20, frontLeg: -0.25, backLeg: 0.25, arms: -0.30, bowlingArm: 1.10 },
+  // Run-up strides (dynamic arm/leg pump)
+  run1: { head: 0.05, torso: 0.22, frontLeg: 0.65, backLeg: -0.65, arms: -0.55, bowlingArm: 0.75 },
+  run2: { head: 0.02, torso: 0.18, frontLeg: -0.60, backLeg: 0.60, arms: 0.55, bowlingArm: -0.45 },
+  runGather: { head: 0.04, torso: 0.26, frontLeg: -0.30, backLeg: 0.30, arms: -0.35, bowlingArm: 1.30 },
 
   // 360-degree windmill delivery
-  windup: { head: 0.06, torso: -0.22, frontLeg: 0.20, backLeg: -0.20, arms: 0.50, bowlingArm: 2.10 },
-  releaseApex: { head: 0.02, torso: 0.08, frontLeg: 0.45, backLeg: -0.40, arms: -0.20, bowlingArm: -0.15 },
-  releaseThrust: { head: -0.05, torso: 0.38, frontLeg: 0.55, backLeg: -0.45, arms: -0.40, bowlingArm: -1.75 },
+  windup: { head: 0.06, torso: -0.25, frontLeg: 0.25, backLeg: -0.25, arms: 0.60, bowlingArm: 2.30 },
+  releaseApex: { head: 0.02, torso: 0.12, frontLeg: 0.55, backLeg: -0.45, arms: -0.25, bowlingArm: -0.10 },
+  releaseThrust: { head: -0.05, torso: 0.45, frontLeg: 0.65, backLeg: -0.55, arms: -0.45, bowlingArm: -1.95 },
 
   // Follow-through landing over the crease
-  landing: { head: 0.08, torso: 0.44, frontLeg: 0.35, backLeg: -0.50, arms: 0.20, bowlingArm: -2.30 },
+  landing: { head: 0.08, torso: 0.50, frontLeg: 0.45, backLeg: -0.60, arms: 0.25, bowlingArm: -2.45 },
 };
 
 export const BOWLER_CLIPS: Record<string, Clip> = {
@@ -112,7 +113,7 @@ export const BOWLER_CLIPS: Record<string, Clip> = {
     loop: true,
     keyframes: [
       { t: 0.0, pose: BOWLER_POSES.idle, easing: 'easeInOut' },
-      { t: 0.5, pose: { ...BOWLER_POSES.idle, torso: 0.08, bowlingArm: 0.45 }, easing: 'easeInOut' },
+      { t: 0.5, pose: { ...BOWLER_POSES.idle, torso: 0.07, bowlingArm: 0.12 }, easing: 'easeInOut' },
       { t: 1.0, pose: BOWLER_POSES.idle, easing: 'easeInOut' },
     ],
   },
@@ -157,18 +158,18 @@ export const BOWLER_CLIPS: Record<string, Clip> = {
 
 export const FIELDER_POSES: Record<string, Pose> = {
   // Crouched alert ready position
-  ready1: { head: 0.0, torso: 0.18, frontLeg: 0.22, backLeg: -0.22, arms: 0.30 },
-  ready2: { head: 0.02, torso: 0.22, frontLeg: 0.25, backLeg: -0.25, arms: 0.35 },
+  ready1: { head: 0.0, torso: 0.24, frontLeg: 0.30, backLeg: -0.25, arms: 0.40 },
+  ready2: { head: 0.02, torso: 0.28, frontLeg: 0.35, backLeg: -0.28, arms: 0.45 },
 
   // Running toward the ball
-  run1: { head: 0.08, torso: 0.25, frontLeg: 0.60, backLeg: -0.60, arms: -0.50 },
-  run2: { head: 0.08, torso: 0.25, frontLeg: -0.60, backLeg: 0.60, arms: 0.50 },
+  run1: { head: 0.08, torso: 0.28, frontLeg: 0.65, backLeg: -0.65, arms: -0.55 },
+  run2: { head: 0.08, torso: 0.28, frontLeg: -0.65, backLeg: 0.65, arms: 0.55 },
 
   // Horizontal dive on street asphalt
-  dive: { head: -0.25, torso: 1.15, frontLeg: -0.30, backLeg: -0.40, arms: 1.45 },
+  dive: { head: -0.25, torso: 1.25, frontLeg: -0.35, backLeg: -0.45, arms: 1.60 },
 
-  // Hands clutching head in dismay (FOUR / SIX / AUNTY'S WINDOW / CAR)
-  handsOnHead: { head: -0.15, torso: -0.08, frontLeg: 0.08, backLeg: -0.08, arms: -2.25 },
+  // Hands clutching head in dismay
+  handsOnHead: { head: -0.15, torso: -0.10, frontLeg: 0.08, backLeg: -0.08, arms: -2.35 },
 };
 
 export const FIELDER_CLIPS: Record<string, Clip> = {

@@ -2,88 +2,12 @@
  * state.ts - Game state machine, character animators, physics updates, and timing evaluations.
  */
 
-import { CONFIG, PALETTE } from './config.ts';
-import { Animator } from './animation.ts';
+import { CONFIG } from './config.ts';
 import { BATTER_CLIPS, BOWLER_CLIPS, FIELDER_CLIPS } from './poses.ts';
-import type {
-  GameState,
-  DeliveryResult,
-  OutcomeType,
-  TimingRating,
-  CharacterRig,
-  BallState,
-} from './types.ts';
+import { evaluateTiming, setupHitTrajectory } from './timing.ts';
+import type { GameState } from './types.ts';
 
-export function createCharacterRig(
-  x: number,
-  y: number,
-  shirtColor: string,
-  pantsColor: string,
-  extraPart?: { name: string; part: any }
-): CharacterRig {
-  const parts: Record<string, any> = {
-    torso: { pivotX: 0, pivotY: -70, width: 22, height: 50, angle: 0, color: shirtColor },
-    head: { pivotX: 0, pivotY: -105, width: 22, height: 22, angle: 0, color: PALETTE.roadLines },
-    frontLeg: { pivotX: 4, pivotY: -20, width: 10, height: 42, angle: 0.05, color: pantsColor },
-    backLeg: { pivotX: -4, pivotY: -20, width: 10, height: 42, angle: -0.05, color: pantsColor },
-    arms: { pivotX: 8, pivotY: -60, width: 9, height: 32, angle: -0.3, color: shirtColor },
-  };
-  if (extraPart) parts[extraPart.name] = extraPart.part;
-  return { x, y, parts };
-}
-
-export function createBatterRig(x: number, y: number): CharacterRig {
-  return createCharacterRig(x, y, PALETTE.roadLines, PALETTE.asphalt, {
-    name: 'bat',
-    part: { pivotX: 14, pivotY: -45, width: 10, height: 65, angle: -0.4, color: PALETTE.wicketWood },
-  });
-}
-
-export function createBowlerRig(x: number, y: number): CharacterRig {
-  return createCharacterRig(x, y, PALETTE.buildingA, PALETTE.asphalt, {
-    name: 'bowlingArm',
-    part: { pivotX: -8, pivotY: -72, width: 8, height: 38, angle: 0.4, color: PALETTE.buildingA },
-  });
-}
-
-export function createInitialState(): GameState {
-  const l = CONFIG.layout;
-  return {
-    state: 'TITLE',
-    score: 0,
-    lives: CONFIG.gameplay.initialLives,
-    ballCount: 0,
-    currentBallSpeed: CONFIG.ball.baseSpeed,
-    ball: {
-      x: l.bowler.x + CONFIG.ball.releaseOffsetX,
-      y: l.bowler.y + CONFIG.ball.releaseOffsetY,
-      vx: -CONFIG.ball.baseSpeed,
-      vy: 0,
-      radius: CONFIG.ball.radius,
-      active: false,
-      bounced: false,
-      arcProgress: 0,
-    },
-    lastResult: null,
-    batterRig: createBatterRig(l.batter.x, l.batter.y),
-    bowlerRig: createBowlerRig(l.bowler.x, l.bowler.y),
-    fielder1Rig: createCharacterRig(l.fielder1.x, l.fielder1.y, PALETTE.buildingB, PALETTE.asphalt),
-    fielder2Rig: createCharacterRig(l.fielder2.x, l.fielder2.y, PALETTE.roadLines, PALETTE.buildingBTrim),
-    batterAnimator: new Animator(BATTER_CLIPS.idle),
-    bowlerAnimator: new Animator(BOWLER_CLIPS.idle),
-    fielder1Animator: new Animator(FIELDER_CLIPS.idle),
-    fielder2Animator: new Animator(FIELDER_CLIPS.idle),
-    previewClipName: null,
-    isBallReleased: false,
-    bowlerPhase: 'RUN_UP',
-    bowlerTimer: 0,
-    swingProgress: 0,
-    isSwinging: false,
-    hasSwungThisBall: false,
-    resultTimer: 0,
-    debugMode: false,
-  };
-}
+export { createRig, createBatterRig, createBowlerRig, createInitialState } from './state-init.ts';
 
 export function startNewDelivery(state: GameState): void {
   state.ballCount++;
@@ -96,6 +20,10 @@ export function startNewDelivery(state: GameState): void {
   state.bowlerPhase = 'RUN_UP';
   state.bowlerTimer = 0;
   state.isBallReleased = false;
+
+  state.batterRig.expression = 'neutral';
+  state.bowlerRig.expression = 'neutral';
+  [state.fielder1Rig, state.fielder2Rig, state.fielder3Rig].forEach((r) => (r.expression = 'neutral'));
 
   state.ball = {
     x: CONFIG.layout.bowler.x + CONFIG.ball.releaseOffsetX,
@@ -118,6 +46,7 @@ export function startNewDelivery(state: GameState): void {
   state.batterAnimator.play(BATTER_CLIPS.idle);
   state.fielder1Animator.play(FIELDER_CLIPS.idle);
   state.fielder2Animator.play(FIELDER_CLIPS.idle);
+  state.fielder3Animator.play(FIELDER_CLIPS.idle);
 }
 
 export function resetGame(state: GameState): void {
@@ -129,45 +58,8 @@ export function resetGame(state: GameState): void {
   startNewDelivery(state);
 }
 
-export function evaluateTiming(offsetPx: number, speed: number): DeliveryResult {
-  const t = CONFIG.timing;
-  const timingOffsetMs = Math.round((offsetPx / speed) * 1000);
-
-  if (offsetPx >= t.windowMinOffset && offsetPx <= t.windowMaxOffset) {
-    return { outcome: 'WINDOW', timingRating: 'TOO_EARLY', timingOffsetPx: offsetPx, timingOffsetMs, description: "AUNTY'S WINDOW! GAME OVER", runsScored: 0, livesLost: CONFIG.gameplay.initialLives, isWindowBroken: true, isScooterHit: false };
-  }
-  if (offsetPx <= -t.scooterMinOffset && offsetPx >= -t.scooterMaxOffset) {
-    const isCar = Math.abs(offsetPx) > (t.scooterMinOffset + t.scooterMaxOffset) / 2;
-    return isCar
-      ? { outcome: 'CAR_GLASS', timingRating: 'TOO_LATE', timingOffsetPx: offsetPx, timingOffsetMs, description: 'CAR WINDSHIELD CRACKED! -1 LIFE', runsScored: 0, livesLost: 1, isWindowBroken: false, isScooterHit: false, isCarGlassBroken: true }
-      : { outcome: 'SCOOTER', timingRating: 'TOO_LATE', timingOffsetPx: offsetPx, timingOffsetMs, description: 'ACTIVA SCOOTER DENT! -1 LIFE', runsScored: 0, livesLost: 1, isWindowBroken: false, isScooterHit: true, isCarGlassBroken: false };
-  }
-  if (Math.abs(offsetPx) <= t.sixTolerance) {
-    return { outcome: 'SIX', timingRating: 'PERFECT', timingOffsetPx: offsetPx, timingOffsetMs, description: 'SIX!', runsScored: 6, livesLost: 0, isWindowBroken: false, isScooterHit: false };
-  }
-  if ((offsetPx > t.sixTolerance && offsetPx <= t.fourEarlyTolerance) || (offsetPx < -t.sixTolerance && offsetPx >= -t.fourLateTolerance)) {
-    return { outcome: 'FOUR', timingRating: offsetPx > 0 ? 'GOOD_EARLY' : 'GOOD_LATE', timingOffsetPx: offsetPx, timingOffsetMs, description: 'FOUR!', runsScored: 4, livesLost: 0, isWindowBroken: false, isScooterHit: false };
-  }
-  if ((offsetPx > t.fourEarlyTolerance && offsetPx <= t.singleEarlyTolerance) || (offsetPx < -t.fourLateTolerance && offsetPx >= -t.singleLateTolerance)) {
-    return { outcome: 'SINGLE', timingRating: offsetPx > 0 ? 'EARLY' : 'LATE', timingOffsetPx: offsetPx, timingOffsetMs, description: 'SINGLE (+1)', runsScored: 1, livesLost: 0, isWindowBroken: false, isScooterHit: false };
-  }
-  const rating: TimingRating = offsetPx > 0 ? 'TOO_EARLY' : 'TOO_LATE';
-  return { outcome: 'MISS', timingRating: rating, timingOffsetPx: offsetPx, timingOffsetMs, description: 'MISSED!', runsScored: 0, livesLost: 0, isWindowBroken: false, isScooterHit: false };
-}
-
-function setupHitTrajectory(ball: BallState, outcome: OutcomeType): void {
-  ball.startPos = { x: ball.x, y: ball.y };
-  ball.arcProgress = 0;
-  const l = CONFIG.layout;
-  if (outcome === 'WINDOW') ball.target = { x: l.window.x + l.window.width / 2, y: l.window.y + l.window.height / 2 };
-  else if (outcome === 'CAR_GLASS') ball.target = { x: l.car.x + l.car.width / 2, y: l.car.y + 20 };
-  else if (outcome === 'SCOOTER') ball.target = { x: l.scooter.x + l.scooter.width / 2, y: l.scooter.y + l.scooter.height / 2 };
-  else if (outcome === 'SIX') ball.target = { x: CONFIG.world.width + 120, y: 120 };
-  else if (outcome === 'FOUR') ball.target = { x: CONFIG.world.width + 90, y: CONFIG.street.groundY - 15 };
-  else if (outcome === 'SINGLE') ball.target = { x: 740, y: CONFIG.street.groundY - 12 };
-}
-
 export function handlePlayerSwing(state: GameState): void {
+  if (state.isPortrait) return;
   if (state.state === 'TITLE' || state.state === 'GAME_OVER') {
     resetGame(state);
     return;
@@ -192,13 +84,25 @@ export function handlePlayerSwing(state: GameState): void {
     state.lives -= result.livesLost;
     setupHitTrajectory(state.ball, result.outcome);
     state.state = 'HIT';
+    state.squashX = 1.18; state.squashY = 0.84;
 
-    if (result.outcome === 'FOUR' || result.outcome === 'SIX' || result.outcome === 'WINDOW' || result.outcome === 'CAR_GLASS' || result.outcome === 'SCOOTER') {
-      state.fielder1Animator.play(FIELDER_CLIPS.handsOnHead, true);
-      state.fielder2Animator.play(FIELDER_CLIPS.handsOnHead, true);
+    const allFielders = [state.fielder1Rig, state.fielder2Rig, state.fielder3Rig];
+    const allFieldAnim = [state.fielder1Animator, state.fielder2Animator, state.fielder3Animator];
+
+    if (result.outcome === 'SIX' || result.outcome === 'FOUR') {
+      state.batterRig.expression = 'smile';
+      allFielders.forEach((r) => (r.expression = 'sad'));
+      allFieldAnim.forEach((a) => a.play(FIELDER_CLIPS.handsOnHead, true));
+    } else if (result.outcome === 'WINDOW' || result.outcome === 'CAR_GLASS' || result.outcome === 'SCOOTER') {
+      state.batterRig.expression = 'shout';
+      state.bowlerRig.expression = 'shout';
+      allFielders.forEach((r) => (r.expression = 'shout'));
+      allFieldAnim.forEach((a) => a.play(FIELDER_CLIPS.handsOnHead, true));
     } else if (result.outcome === 'SINGLE') {
+      state.batterRig.expression = 'neutral';
       state.fielder1Animator.play(FIELDER_CLIPS.run, true);
       state.fielder2Animator.play(FIELDER_CLIPS.dive, true);
+      state.fielder3Animator.play(FIELDER_CLIPS.run, true);
     }
   } else {
     state.lastResult = result;
@@ -214,17 +118,24 @@ export function cycleBatterPreviewClip(state: GameState): void {
 }
 
 export function updateGame(state: GameState, dt: number): void {
+  if (state.isPortrait) return;
   const delta = Math.min(dt, 0.05);
 
   state.batterAnimator.update(delta);
   state.bowlerAnimator.update(delta);
   state.fielder1Animator.update(delta);
   state.fielder2Animator.update(delta);
+  state.fielder3Animator.update(delta);
 
   state.batterAnimator.applyToRig(state.batterRig);
   state.bowlerAnimator.applyToRig(state.bowlerRig);
   state.fielder1Animator.applyToRig(state.fielder1Rig);
   state.fielder2Animator.applyToRig(state.fielder2Rig);
+  state.fielder3Animator.applyToRig(state.fielder3Rig);
+
+  // Smooth squash/stretch recovery
+  state.squashX += (1.0 - state.squashX) * Math.min(1, 10 * delta);
+  state.squashY += (1.0 - state.squashY) * Math.min(1, 10 * delta);
 
   if (state.batterAnimator.clip?.name === 'swing' && state.batterAnimator.isFinished && !state.previewClipName) {
     state.batterAnimator.play(BATTER_CLIPS.followThrough);
@@ -250,6 +161,7 @@ export function updateGame(state: GameState, dt: number): void {
         if (state.bowlerAnimator.isFinished) {
           state.bowlerPhase = 'RELEASED';
           state.bowlerAnimator.play(BOWLER_CLIPS.followThrough, true);
+          state.squashX = 1.08; state.squashY = 0.92;
         }
       }
 
@@ -266,6 +178,12 @@ export function updateGame(state: GameState, dt: number): void {
           state.ball.y = (CONFIG.ball.bounceY - state.ball.radius) + t * (CONFIG.layout.sweetSpot.y - (CONFIG.ball.bounceY - state.ball.radius));
         }
 
+        // Secondary motion: Batter's head tracks the approaching delivery
+        const dx = state.ball.x - state.batterRig.x;
+        const dy = state.ball.y - (state.batterRig.y - 130);
+        const targetHead = Math.max(-0.35, Math.min(0.25, Math.atan2(dy, dx)));
+        state.batterRig.parts.head.angle += (targetHead - state.batterRig.parts.head.angle) * Math.min(1, 10 * delta);
+
         if (state.ball.x <= CONFIG.layout.wicket.x + CONFIG.layout.wicket.width) {
           state.lives = Math.max(0, state.lives - 1);
           state.lastResult = {
@@ -280,6 +198,9 @@ export function updateGame(state: GameState, dt: number): void {
             isScooterHit: false,
           };
           state.ball.active = false;
+          state.batterRig.expression = 'wince';
+          state.bowlerRig.expression = 'smile';
+          state.squashX = 0.92; state.squashY = 1.12;
           state.batterAnimator.play(BATTER_CLIPS.bowledReaction, true);
           state.state = 'RESULT';
         }

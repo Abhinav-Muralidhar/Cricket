@@ -73,6 +73,12 @@ export interface GameConfig {
     maxVisibleWidth: number;
     actionCenterX: number;
   };
+  bg: {
+    src: string;
+    scale: number;
+    offsetY: number;
+  };
+  drawCodeVehicles: boolean;
   street: {
     buildingsY: number;
     footpathY: number;
@@ -97,6 +103,7 @@ export interface GameConfig {
     bowler: { x: number; y: number };
     fielder1: { x: number; y: number };
     fielder2: { x: number; y: number };
+    fielder3: { x: number; y: number };
     sweetSpot: { x: number; y: number };
   };
   ball: {
@@ -131,10 +138,16 @@ export const CONFIG: GameConfig = {
   world: {
     width: 1600,
     height: 800,
-    minVisibleWidth: 900,
+    minVisibleWidth: 1080,
     maxVisibleWidth: 1600,
     actionCenterX: 800,
   },
+  bg: {
+    src: '/bg.png',
+    scale: 1.0,
+    offsetY: -70,
+  },
+  drawCodeVehicles: false,
   street: {
     buildingsY: 110,
     footpathY: 496,
@@ -146,7 +159,7 @@ export const CONFIG: GameConfig = {
     skyline: { y: 155 },
     // Aunty's building on batter's leg side, visually distinct and hittable
     buildingA: { x: 340, y: 110, width: 290, height: 386 },
-    window: { x: 420, y: 195, width: 125, height: 135 },
+    window: { x: 88, y: 221, width: 143, height: 132 },
     // Parked hatchback & Activa made larger
     car: { x: 750, y: 565, width: 285, height: 115 },
     scooter: { x: 1130, y: 625, width: 140, height: 100 },
@@ -154,14 +167,15 @@ export const CONFIG: GameConfig = {
     tree: { x: 1400, y: 70 },
     thela: { x: 180, y: 640, width: 120, height: 80 },
     cow: { x: 1340, y: 580, width: 130, height: 95 },
-    wicket: { x: 490, y: 660, width: 28, height: 90 },
+    wicket: { x: 520, y: 660, width: 28, height: 90 },
     cricketBag: { x: 440, y: 660 },
     strayDog: { x: 730, y: 695 },
-    batter: { x: 560, y: 660 },
+    batter: { x: 480, y: 660 },
     bowler: { x: 1060, y: 660 },
-    fielder1: { x: 970, y: 660 },
-    fielder2: { x: 720, y: 660 },
-    sweetSpot: { x: 620, y: 600 },
+    fielder1: { x: 720, y: 720 },
+    fielder2: { x: 840, y: 610 },
+    fielder3: { x: 1240, y: 690 },
+    sweetSpot: { x: 600, y: 600 },
   },
   ball: {
     radius: 14,

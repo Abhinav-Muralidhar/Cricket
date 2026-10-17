@@ -1,10 +1,9 @@
 /**
- * types.ts - Core types and interfaces for Gully Cricket
+ * types.ts - Core types and interfaces for Gully Cricket.
  */
 
 import type { Animator } from './animation.ts';
 
-/** Possible game state machine states */
 export type GameStateKind =
   | 'TITLE'
   | 'BOWLING'
@@ -12,7 +11,6 @@ export type GameStateKind =
   | 'RESULT'
   | 'GAME_OVER';
 
-/** Possible batting outcomes decided by timing */
 export type OutcomeType =
   | 'SIX'
   | 'FOUR'
@@ -23,7 +21,6 @@ export type OutcomeType =
   | 'MISS'
   | 'BOWLED';
 
-/** Qualitative timing feedback for the player */
 export type TimingRating =
   | 'PERFECT'
   | 'GOOD_EARLY'
@@ -34,7 +31,10 @@ export type TimingRating =
   | 'TOO_LATE'
   | 'NONE';
 
-/** Rig part definition for hierarchical 2D character rendering */
+export type FaceExpression = 'neutral' | 'smile' | 'shout' | 'sad' | 'wince';
+export type CharacterVariant = 'batter' | 'bowler' | 'gully' | 'schoolKid' | 'uncle';
+export type HitTargetKey = 'window' | 'car' | 'scooter';
+
 export interface RigPart {
   pivotX: number;
   pivotY: number;
@@ -46,20 +46,25 @@ export interface RigPart {
   children?: RigPart[];
 }
 
-/** Character rig containing named body parts */
 export interface CharacterRig {
   x: number;
   y: number;
+  scale: number;
+  variant: CharacterVariant;
   parts: Record<string, RigPart>;
+  expression: FaceExpression;
+  shirtColor: string;
+  pantsColor: string;
+  facing?: 'left' | 'right';
+  prevTorsoAngle?: number;
+  bodyLean?: number;
 }
 
-/** 2D point / vector */
 export interface Vector2D {
   x: number;
   y: number;
 }
 
-/** State of the tape ball */
 export interface BallState {
   x: number;
   y: number;
@@ -73,7 +78,6 @@ export interface BallState {
   startPos?: Vector2D;
 }
 
-/** Result details of the most recent delivery */
 export interface DeliveryResult {
   outcome: OutcomeType;
   timingRating: TimingRating;
@@ -87,7 +91,6 @@ export interface DeliveryResult {
   isCarGlassBroken?: boolean;
 }
 
-/** Complete runtime game state */
 export interface GameState {
   state: GameStateKind;
   score: number;
@@ -100,17 +103,24 @@ export interface GameState {
   bowlerRig: CharacterRig;
   fielder1Rig: CharacterRig;
   fielder2Rig: CharacterRig;
+  fielder3Rig: CharacterRig;
   batterAnimator: Animator;
   bowlerAnimator: Animator;
   fielder1Animator: Animator;
   fielder2Animator: Animator;
+  fielder3Animator: Animator;
   previewClipName: string | null;
   isBallReleased: boolean;
   bowlerPhase: 'RUN_UP' | 'DELIVERY' | 'RELEASED';
   bowlerTimer: number;
+  squashX: number;
+  squashY: number;
   swingProgress: number;
   isSwinging: boolean;
   hasSwungThisBall: boolean;
   resultTimer: number;
   debugMode: boolean;
+  selectedHitTarget: HitTargetKey;
+  isPortrait: boolean;
+  poseEditorActive?: boolean;
 }
