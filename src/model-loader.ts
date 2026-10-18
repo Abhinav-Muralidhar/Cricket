@@ -13,6 +13,7 @@ import {
   createCapProp,
   createBatProp,
 } from './toon-material.ts';
+import { CONFIG } from './config.ts';
 
 export interface LoadedCharacterInstance {
   group: THREE.Group;
@@ -23,6 +24,7 @@ export interface LoadedCharacterInstance {
 }
 
 let baseCharacterModel: THREE.Group | null = null;
+const characterModels = new Map<string, THREE.Group>();
 const animationClips = new Map<string, THREE.AnimationClip>();
 let isLoaded = false;
 let isLoading = false;
@@ -34,25 +36,30 @@ export function is3DAssetsLoaded(): boolean {
 
 export function findBone(root: THREE.Object3D, namePart: string): THREE.Bone | null {
   let found: THREE.Bone | null = null;
-  const target = namePart.toLowerCase();
+  const targetClean = namePart.replace(/[:_]/g, '').toLowerCase();
   root.traverse((child) => {
-    if (!found && child instanceof THREE.Bone && child.name.toLowerCase().includes(target)) {
-      found = child;
+    if (child instanceof THREE.Bone) {
+      const nameClean = child.name.replace(/[:_]/g, '').toLowerCase();
+      if ((nameClean === targetClean || nameClean.endsWith(targetClean)) && (!found || child.children.length > 0)) {
+        found = child;
+      }
     }
   });
+  if (!found) {
+    root.traverse((child) => {
+      if (!found && child instanceof THREE.Bone && child.name.toLowerCase().includes(targetClean)) found = child;
+    });
+  }
   return found;
 }
 
 export function removeRootDrift(clip: THREE.AnimationClip): THREE.AnimationClip {
   const cloned = clip.clone();
   for (const track of cloned.tracks) {
-    const lower = track.name.toLowerCase();
-    if (lower.includes('hips') && lower.endsWith('.position')) {
-      const initialX = track.values[0] ?? 0;
-      const initialZ = track.values[2] ?? 0;
+    if (track.name.toLowerCase().includes('hips') && track.name.endsWith('.position')) {
+      const initX = track.values[0] ?? 0, initZ = track.values[2] ?? 0;
       for (let i = 0; i < track.values.length; i += 3) {
-        track.values[i] = initialX;     // Zero out horizontal drift
-        track.values[i + 2] = initialZ; // Zero out depth drift
+        track.values[i] = initX; track.values[i + 2] = initZ;
       }
     }
   }
@@ -85,27 +92,30 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
       const fbx = await loader.loadAsync(url);
       if (name === 'idle') {
         baseCharacterModel = fbx;
+        characterModels.set('default', fbx);
+        characterModels.set('fielder', fbx);
         const box = new THREE.Box3().setFromObject(fbx);
         nativeModelHeight = Math.max(1, box.max.y - box.min.y);
+      } else if (name === 'pitch') {
+        fbx.traverse((c) => { if (c instanceof THREE.Bone) c.name = c.name.replace(/^mixamorig\d+/i, 'mixamorig'); });
+        characterModels.set('bowler', fbx);
+      } else if (name === 'swing') {
+        fbx.traverse((c) => { if (c instanceof THREE.Bone) c.name = c.name.replace(/^mixamorig\d+/i, 'mixamorig'); });
+        characterModels.set('batter', fbx);
       }
       if (fbx.animations && fbx.animations.length > 0) {
-        let clip = fbx.animations[0];
+        const valid = fbx.animations.find((a) => a.tracks && a.tracks.length > 0) || fbx.animations[0];
+        let clip = valid.clone();
         clip.name = name;
         if (name === 'run') clip = removeRootDrift(clip);
         animationClips.set(name, clip);
       }
     } catch (err) {
-      console.warn(`[3D Loader] Failed to load ${url}, trying fallback...`, err);
-      // Try lowercase fallback if Run.fbx failed
       if (url.includes('Run.fbx')) {
         try {
           const fallback = await loader.loadAsync('/models/run.fbx');
-          if (fallback.animations && fallback.animations.length > 0) {
-            let clip = fallback.animations[0];
-            clip.name = name;
-            clip = removeRootDrift(clip);
-            animationClips.set(name, clip);
-          }
+          const valid = fallback.animations?.find((a) => a.tracks && a.tracks.length > 0) || fallback.animations?.[0];
+          if (valid) animationClips.set(name, removeRootDrift(valid.clone()));
         } catch { /* ignored */ }
       }
     } finally {
@@ -115,10 +125,17 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
   };
 
   await Promise.all(Object.entries(clipFiles).map(([name, url]) => loadFile(name, url)));
+  if (!baseCharacterModel) throw new Error('[3D Loader] Base character model failed');
 
-  if (!baseCharacterModel) {
-    throw new Error('[3D Loader] Base character model (idle.fbx) failed to load');
-  }
+  animationClips.forEach((clip) => {
+    clip.tracks.forEach((track) => {
+      const [boneRaw, ...propParts] = track.name.split('.');
+      const prop = propParts.join('.');
+      const bone = boneRaw.includes('|') ? boneRaw.split('|').pop()! : boneRaw;
+      const clean = bone.replace(/^.*mixamorig\d*:?/i, 'mixamorig');
+      track.name = `${clean}.${prop}`;
+    });
+  });
 
   isLoaded = true;
   isLoading = false;
@@ -126,41 +143,47 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
 
 export function instantiateCharacter(
   color: string | number,
-  options: { withBat?: boolean; withCap?: boolean } = {}
+  options: { withBat?: boolean; withCap?: boolean; modelType?: 'batter' | 'bowler' | 'fielder' } = {}
 ): LoadedCharacterInstance {
-  if (!baseCharacterModel) throw new Error('[3D Loader] Model not loaded');
+  const model = (options.modelType && characterModels.get(options.modelType)) || baseCharacterModel;
+  if (!model) throw new Error('[3D Loader] Model not loaded');
 
-  // Deep clone mesh & bones using Three.js SkeletonUtils first (before outlines are added)
-  const cloned = SkeletonUtils.clone(baseCharacterModel) as THREE.Group;
-
-  // Collect all SkinnedMesh / Mesh objects into an array before modifying hierarchy
+  const cloned = SkeletonUtils.clone(model) as THREE.Group;
   const meshes: THREE.Mesh[] = [];
   cloned.traverse((o) => {
-    if ((o as THREE.Mesh).isMesh && !o.userData.isOutline) {
-      meshes.push(o as THREE.Mesh);
-    }
+    if ((o as THREE.Mesh).isMesh && !o.userData.isOutline) meshes.push(o as THREE.Mesh);
   });
 
-  console.log(`[3D] Character meshes found: ${meshes.length}`);
-
-  // Loop over collected array to assign toon material and attach outlines
   for (const mesh of meshes) {
-    mesh.material = createToonMaterial(color);
+    const origMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    const origMap = (origMat as THREE.MeshStandardMaterial)?.map || null;
+    const isEyelash = mesh.name.toLowerCase().includes('eyelash');
+    mesh.material = createToonMaterial(color, origMap);
+    if (isEyelash) {
+      mesh.material.transparent = true;
+      mesh.material.alphaTest = 0.5;
+    }
     mesh.castShadow = false;
     mesh.receiveShadow = false;
-    attachInvertedHullOutline(mesh);
+    if (!isEyelash) attachInvertedHullOutline(mesh);
   }
 
   // Blob shadow on ground
   const shadow = createBlobShadowMesh();
   cloned.add(shadow);
 
-  // Attach Cricket Bat to Right Hand
+  // Attach Cricket Bat to mixamorig:RightHand
   if (options.withBat) {
-    const handBone = findBone(cloned, 'RightHand') || findBone(cloned, 'Hand.R');
+    const handBone = findBone(cloned, 'mixamorig:RightHand') || findBone(cloned, 'RightHand');
     if (handBone) {
+      console.log(`[3D] Attached bat to bone: "${handBone.name}"`);
       const bat = createBatProp();
+      bat.position.set(CONFIG.batOffset.x, CONFIG.batOffset.y, CONFIG.batOffset.z);
+      bat.rotation.set(CONFIG.batRotation.x, CONFIG.batRotation.y, CONFIG.batRotation.z);
+      bat.scale.set(CONFIG.batScale.x, CONFIG.batScale.y, CONFIG.batScale.z);
       handBone.add(bat);
+    } else {
+      console.warn('[3D] mixamorig:RightHand bone not found for bat');
     }
   }
 
@@ -176,16 +199,35 @@ export function instantiateCharacter(
   const mixer = new THREE.AnimationMixer(cloned);
   const actions = new Map<string, THREE.AnimationAction>();
 
+  const clonedBones = new Set<string>();
+  cloned.traverse((c) => { if (c instanceof THREE.Bone) clonedBones.add(c.name); });
+
+  const unmatchedTracks: string[] = [];
   animationClips.forEach((clip, name) => {
-    const action = mixer.clipAction(clip);
-    actions.set(name, action);
+    actions.set(name, mixer.clipAction(clip));
+    clip.tracks.forEach((track) => {
+      const nodeName = track.name.split('.')[0];
+      if (!clonedBones.has(nodeName)) unmatchedTracks.push(`${name}:${track.name}`);
+    });
   });
 
-  return {
-    group: cloned,
-    mixer,
-    actions,
-    baseHeight: nativeModelHeight,
-    shadowMesh: shadow,
-  };
+  const clipNames = Array.from(actions.keys());
+  if (unmatchedTracks.length === 0) {
+    console.log(`[3D] Character clips: [${clipNames.join(', ')}]. All tracks match cloned skeleton bones.`);
+  } else {
+    console.warn(`[3D] Character clips: [${clipNames.join(', ')}]. Unmatched tracks (${unmatchedTracks.length}):`, unmatchedTracks);
+  }
+
+  // Play idle immediately from creation with random time offset to avoid synchrony
+  const idleAction = actions.get('idle');
+  if (idleAction) {
+    idleAction.reset();
+    idleAction.setLoop(THREE.LoopRepeat, Infinity);
+    const duration = idleAction.getClip().duration || 1.0;
+    idleAction.time = Math.random() * duration;
+    idleAction.play();
+  }
+
+  mixer.update(0.001);
+  return { group: cloned, mixer, actions, baseHeight: nativeModelHeight, shadowMesh: shadow };
 }

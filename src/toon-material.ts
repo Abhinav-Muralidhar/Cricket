@@ -12,9 +12,9 @@ let sharedBlobShadowTexture: THREE.CanvasTexture | null = null;
 export function getSharedGradientMap(): THREE.DataTexture {
   if (!sharedGradientMap) {
     const data = new Uint8Array([
-      90, 90, 95, 255,    // Dark shade (0.35)
-      180, 180, 185, 255, // Mid tone (0.70)
-      255, 255, 255, 255, // Lit highlight (1.00)
+      42, 31, 45, 255,    // Dark-warm shadow band (#2A1F2D)
+      175, 168, 160, 255, // Mid band
+      255, 250, 245, 255, // Lit highlight
     ]);
     sharedGradientMap = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
     sharedGradientMap.minFilter = THREE.NearestFilter;
@@ -24,25 +24,62 @@ export function getSharedGradientMap(): THREE.DataTexture {
   return sharedGradientMap;
 }
 
-export function createToonMaterial(color: string | number): THREE.MeshToonMaterial {
+export function createToonMaterial(color: string | number, map?: THREE.Texture | null): THREE.MeshToonMaterial {
+  // Desaturate ~25%, darken ~15%, tint with warm multiply (#F7A35C at 10%)
+  const col = new THREE.Color(color);
+  const hsl = { h: 0, s: 0, l: 0 };
+  col.getHSL(hsl);
+  hsl.s = Math.max(0, hsl.s * 0.75);
+  hsl.l = Math.max(0, hsl.l * 0.85);
+  col.setHSL(hsl.h, hsl.s, hsl.l);
+  const warmTint = new THREE.Color('#F7A35C');
+  col.lerp(col.clone().multiply(warmTint), 0.10);
+
   const mat = new THREE.MeshToonMaterial({
-    color: new THREE.Color(color),
+    color: map ? 0xffffff : col,
+    map: map ?? null,
     gradientMap: getSharedGradientMap(),
   });
+  const anyMat = mat as unknown as Record<string, unknown>;
+  anyMat.envMap = null;
+  anyMat.metalness = 0;
 
   mat.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <dithering_fragment>',
       `
       #include <dithering_fragment>
-      // Sunward warm rim light (#FFD9A0 at 60%) on the sunward (left) edge
+      // Golden-hour 3-band toon lighting (no specular)
+      vec3 geomNormal = normalize(vNormal);
       vec3 viewDir = normalize(vViewPosition);
-      vec3 nNorm = normalize(vNormal);
-      float nDotV = 1.0 - max(dot(nNorm, viewDir), 0.0);
-      float sunBias = clamp(-nNorm.x * 0.7 + 0.3, 0.0, 1.0);
-      float rim = smoothstep(0.45, 0.85, nDotV) * sunBias;
-      vec3 rimCol = vec3(1.0, 0.85, 0.63); // #FFD9A0
-      gl_FragColor.rgb += rimCol * rim * 0.60;
+
+      // Fixed light direction (-0.7, 0.4, 0.6)
+      vec3 fixedLightDir = normalize(vec3(-0.7, 0.4, 0.6));
+      float NdotL = dot(geomNormal, fixedLightDir);
+
+      // 3-band toon ramp with dark-warm shadow band (#2A1F2D tint), mid band, lit band
+      vec3 shadowTint = vec3(42.0 / 255.0, 31.0 / 255.0, 45.0 / 255.0); // #2A1F2D
+      vec3 baseCol = gl_FragColor.rgb;
+
+      vec3 shadowBand = mix(baseCol * 0.35, shadowTint * 1.8, 0.55);
+      vec3 midBand = baseCol * 0.80;
+      vec3 litBand = baseCol * 1.25;
+
+      float stepMid = smoothstep(-0.04, 0.02, NdotL);
+      float stepLit = smoothstep(0.38, 0.44, NdotL);
+
+      vec3 toonShading = mix(shadowBand, midBand, stepMid);
+      toonShading = mix(toonShading, litBand, stepLit);
+
+      // Warm golden rim light (#FFD9A0), fresnel power ~2.0, intensity 1.2
+      // Strongest on the left (sunward) edge using normal dot fixed light dir
+      float NdotV = clamp(1.0 - max(dot(geomNormal, viewDir), 0.0), 0.0, 1.0);
+      float fresnel = pow(NdotV, 2.0);
+      float sunEdge = max(dot(geomNormal, fixedLightDir), 0.0);
+      float rim = fresnel * sunEdge * 1.2;
+      vec3 rimCol = vec3(1.0, 0.851, 0.627); // #FFD9A0
+
+      gl_FragColor.rgb = toonShading + rimCol * rim;
       `
     );
   };
@@ -60,10 +97,10 @@ export function createOutlineMaterial(): THREE.MeshBasicMaterial {
       `
       #if defined( USE_SKINNING )
         vec3 nNorm = length( objectNormal ) > 0.0 ? normalize( objectNormal ) : vec3(0.0, 1.0, 0.0);
-        transformed += nNorm * 0.8;
+        transformed += nNorm * 1.3;
       #else
         vec3 nNorm = length( normal ) > 0.0 ? normalize( normal ) : vec3(0.0, 1.0, 0.0);
-        transformed += nNorm * 0.8;
+        transformed += nNorm * 1.3;
       #endif
       #include <project_vertex>
       `
@@ -96,14 +133,16 @@ export function attachInvertedHullOutline(mesh: THREE.Mesh): THREE.Mesh | null {
 export function createBlobShadowMesh(): THREE.Mesh {
   if (!sharedBlobShadowTexture) {
     const c = document.createElement('canvas');
-    c.width = 64; c.height = 64;
+    c.width = 128;
+    c.height = 128;
     const ctx = c.getContext('2d')!;
-    const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
-    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.55)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+    const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 60);
+    grad.addColorStop(0.0, 'rgba(0, 0, 0, 1.0)');
+    grad.addColorStop(0.35, 'rgba(0, 0, 0, 0.75)');
+    grad.addColorStop(0.70, 'rgba(0, 0, 0, 0.25)');
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillRect(0, 0, 128, 128);
     sharedBlobShadowTexture = new THREE.CanvasTexture(c);
   }
   const geo = new THREE.PlaneGeometry(1, 1);
@@ -115,9 +154,9 @@ export function createBlobShadowMesh(): THREE.Mesh {
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
-  // Stretched ellipse cast slightly away from sun (+X)
-  mesh.scale.set(72, 28, 1);
-  mesh.position.set(12, 0.5, 0);
+  // Stretched away from sun (sun is on left, so stretch extends rightwards along +X)
+  mesh.scale.set(78, 26, 1);
+  mesh.position.set(18, 0.2, 2);
   return mesh;
 }
 
@@ -147,21 +186,17 @@ export function createBatProp(): THREE.Group {
   const bladeMat = createToonMaterial('#F5E9CF'); // Willow wood
   const handleMat = createToonMaterial('#D62828'); // Red rubber grip
 
-  // Blade (flat cricket bat front/back)
-  const bladeGeo = new THREE.BoxGeometry(9.5, 46, 4.5);
-  const blade = new THREE.Mesh(bladeGeo, bladeMat);
-  blade.position.set(0, -32, 0);
-  batGroup.add(blade);
-
-  // Handle
-  const handleGeo = new THREE.CylinderGeometry(2.2, 2.2, 18, 12);
+  // Handle (grip in hand at y=0, extending backwards along -Y)
+  const handleGeo = new THREE.CylinderGeometry(1.9, 1.9, 16, 12);
   const handle = new THREE.Mesh(handleGeo, handleMat);
   handle.position.set(0, -5, 0);
   batGroup.add(handle);
 
-  // Orient so handle is gripped and blade extends down
-  batGroup.rotation.x = Math.PI * 0.1;
-  batGroup.rotation.z = -Math.PI * 0.15;
-  batGroup.position.set(2, -4, 2);
+  // Blade extending forward along +Y (forearm direction)
+  const bladeGeo = new THREE.BoxGeometry(9.0, 44, 4.0);
+  const blade = new THREE.Mesh(bladeGeo, bladeMat);
+  blade.position.set(0, 25, 0);
+  batGroup.add(blade);
+
   return batGroup;
 }

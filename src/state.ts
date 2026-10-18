@@ -20,6 +20,7 @@ export function startNewDelivery(state: GameState): void {
   state.bowlerPhase = 'RUN_UP';
   state.bowlerTimer = 0;
   state.isBallReleased = false;
+  state.isWaitingForBall = false;
 
   state.batterRig.expression = 'neutral';
   state.bowlerRig.expression = 'neutral';
@@ -153,12 +154,14 @@ export function updateGame(state: GameState, dt: number): void {
           state.bowlerTimer = 0;
           state.bowlerAnimator.play(BOWLER_CLIPS.delivery, true);
         }
-      } else if (state.bowlerPhase === 'DELIVERY') {
-        if (!state.isBallReleased && state.bowlerTimer >= 0.22) {
+      } else if (state.bowlerPhase === 'DELIVERY' || state.bowlerPhase === 'RELEASED') {
+        const releaseTime = CONFIG.use3DCharacters ? CONFIG.pitchReleaseTime : 0.22;
+        if (!state.isBallReleased && (state.bowlerTimer >= releaseTime || state.bowlerPhase === 'RELEASED')) {
           state.isBallReleased = true;
           state.ball.active = true;
+          state.ball.startPos = { x: state.ball.x, y: state.ball.y };
         }
-        if (state.bowlerAnimator.isFinished) {
+        if (state.bowlerPhase === 'DELIVERY' && state.bowlerAnimator.isFinished) {
           state.bowlerPhase = 'RELEASED';
           state.bowlerAnimator.play(BOWLER_CLIPS.followThrough, true);
           state.squashX = 1.08; state.squashY = 0.92;
@@ -168,13 +171,14 @@ export function updateGame(state: GameState, dt: number): void {
       if (state.isBallReleased) {
         state.ball.x += state.ball.vx * delta;
         const bounceX = CONFIG.ball.bounceX;
-        const releaseX = CONFIG.layout.bowler.x + CONFIG.ball.releaseOffsetX;
+        const releaseX = state.ball.startPos?.x ?? (CONFIG.layout.bowler.x + CONFIG.ball.releaseOffsetX);
+        const releaseY = state.ball.startPos?.y ?? (CONFIG.layout.bowler.y + CONFIG.ball.releaseOffsetY);
         if (state.ball.x > bounceX) {
-          const t = (releaseX - state.ball.x) / (releaseX - bounceX);
-          state.ball.y = (CONFIG.layout.bowler.y + CONFIG.ball.releaseOffsetY) + t * (CONFIG.ball.bounceY - state.ball.radius - (CONFIG.layout.bowler.y + CONFIG.ball.releaseOffsetY));
+          const t = Math.max(0, Math.min(1, (releaseX - state.ball.x) / (releaseX - bounceX)));
+          state.ball.y = releaseY + t * (CONFIG.ball.bounceY - state.ball.radius - releaseY);
         } else {
           state.ball.bounced = true;
-          const t = (bounceX - state.ball.x) / (bounceX - CONFIG.layout.sweetSpot.x);
+          const t = Math.max(0, Math.min(1, (bounceX - state.ball.x) / (bounceX - CONFIG.layout.sweetSpot.x)));
           state.ball.y = (CONFIG.ball.bounceY - state.ball.radius) + t * (CONFIG.layout.sweetSpot.y - (CONFIG.ball.bounceY - state.ball.radius));
         }
 
@@ -222,7 +226,9 @@ export function updateGame(state: GameState, dt: number): void {
 
     case 'RESULT': {
       state.resultTimer += delta;
-      if (state.resultTimer >= CONFIG.gameplay.resultPauseDurationSec) {
+      const pauseDuration = CONFIG.gameplay.resultPauseDurationSec;
+      const waiting = state.isWaitingForBall && state.resultTimer < pauseDuration + 1.5;
+      if (state.resultTimer >= pauseDuration && !waiting) {
         if (state.lives <= 0 || (state.lastResult && state.lastResult.isWindowBroken)) state.state = 'GAME_OVER';
         else startNewDelivery(state);
       }

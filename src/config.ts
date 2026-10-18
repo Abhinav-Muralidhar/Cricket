@@ -128,6 +128,9 @@ export interface GameConfig {
   pitchReleaseTime: number;
   swingStartOffset: number;
   swingTimeScale: number;
+  batOffset: { x: number; y: number; z: number };
+  batRotation: { x: number; y: number; z: number };
+  batScale: { x: number; y: number; z: number };
   characters3D: Record<string, { yaw: number; scale: number; isLeftHanded?: boolean }>;
   colors3D: { batter: string; bowler: string; fielder1: string; fielder2: string; fielder3: string };
   colors: {
@@ -174,15 +177,15 @@ export const CONFIG: GameConfig = {
     tree: { x: 1400, y: 70 },
     thela: { x: 180, y: 640, width: 120, height: 80 },
     cow: { x: 1340, y: 580, width: 130, height: 95 },
-    wicket: { x: 520, y: 660, width: 28, height: 90 },
-    cricketBag: { x: 440, y: 660 },
-    strayDog: { x: 730, y: 695 },
-    batter: { x: 480, y: 660 },
-    bowler: { x: 1060, y: 660 },
-    fielder1: { x: 720, y: 720 },
-    fielder2: { x: 840, y: 610 },
-    fielder3: { x: 1240, y: 690 },
-    sweetSpot: { x: 600, y: 600 },
+    wicket: { x: 420, y: 690, width: 28, height: 90 },
+    cricketBag: { x: 360, y: 690 },
+    strayDog: { x: 730, y: 720 },
+    batter: { x: 480, y: 690 },
+    bowler: { x: 1080, y: 690 },
+    fielder1: { x: 680, y: 735 },
+    fielder2: { x: 860, y: 665 },
+    fielder3: { x: 1260, y: 710 },
+    sweetSpot: { x: 520, y: 640 },
   },
   ball: {
     radius: 14,
@@ -192,7 +195,7 @@ export const CONFIG: GameConfig = {
     releaseOffsetX: -20,
     releaseOffsetY: -120,
     bounceX: 830,
-    bounceY: 660,
+    bounceY: 690,
   },
   timing: {
     sixTolerance: 24,
@@ -213,9 +216,12 @@ export const CONFIG: GameConfig = {
   },
   use3DCharacters: true,
   outline3D: true,
-  pitchReleaseTime: 0.42,
-  swingStartOffset: 0.18,
-  swingTimeScale: 1.3,
+  pitchReleaseTime: 0.35,
+  swingStartOffset: 0.9,
+  swingTimeScale: 1.8,
+  batOffset: { x: 0, y: 0, z: 0 },
+  batRotation: { x: 0, y: 0, z: 0 },
+  batScale: { x: 1, y: 1, z: 1 },
   characters3D: {
     batter: { yaw: Math.PI / 2, scale: 1.0, isLeftHanded: false },
     bowler: { yaw: -Math.PI / 2, scale: 1.0 },

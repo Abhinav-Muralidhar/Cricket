@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config.ts';
 import { load3DAssets, instantiateCharacter } from './model-loader.ts';
 import { CharacterController3D } from './character-controller.ts';
+import { BallRetrievalManager } from './ball-retrieval.ts';
 import type { CameraViewport } from './render.ts';
 import type { GameState } from './types.ts';
 
@@ -22,6 +23,7 @@ export class Characters3DManager {
   private prevIsSwinging = false;
   private prevOutcome: string | null = null;
   private bowlerRunStartX = 0;
+  private ballRetrieval = new BallRetrievalManager();
   private debugClipNames = ['idle', 'swing', 'pitch', 'run', 'slide', 'dive', 'defeated', 'clap', 'cheer'];
 
   constructor(canvas: HTMLCanvasElement) {
@@ -31,6 +33,7 @@ export class Characters3DManager {
       antialias: true,
       powerPreference: 'high-performance',
     });
+    this.renderer.toneMapping = THREE.NoToneMapping;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene = new THREE.Scene();
@@ -40,9 +43,9 @@ export class Characters3DManager {
     this.camera.position.set(0, 0, 500);
     this.camera.lookAt(0, 0, 0);
 
-    // Warm directional sun light from the left + soft ambient light
+    // Warm directional sun light from the left (-0.7, 0.4, 0.6) + soft ambient light
     const sunLight = new THREE.DirectionalLight(0xfff4e6, 1.3);
-    sunLight.position.set(-600, 450, 400);
+    sunLight.position.set(-700, 400, 600);
     this.scene.add(sunLight);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -67,7 +70,7 @@ export class Characters3DManager {
     const cols = CONFIG.colors3D;
 
     // 1. Batter (hero, with bat)
-    const batterInst = instantiateCharacter(cols.batter, { withBat: true, withCap: false });
+    const batterInst = instantiateCharacter(cols.batter, { withBat: true, withCap: false, modelType: 'batter' });
     const batter = new CharacterController3D(batterInst, {
       yaw: c3d.batter.yaw, scale: c3d.batter.scale, isLeftHanded: c3d.batter.isLeftHanded,
     });
@@ -76,8 +79,8 @@ export class Characters3DManager {
     this.characters.set('batter', batter);
     this.scene.add(batter.group);
 
-    // 2. Bowler (with cap)
-    const bowlerInst = instantiateCharacter(cols.bowler, { withBat: false, withCap: true });
+    // 2. Bowler (from pitch.fbx model in hoody)
+    const bowlerInst = instantiateCharacter(cols.bowler, { withBat: false, withCap: false, modelType: 'bowler' });
     const bowler = new CharacterController3D(bowlerInst, { yaw: c3d.bowler.yaw, scale: c3d.bowler.scale });
     bowler.setPosition(l.bowler.x, l.bowler.y, 0);
     bowler.playIdle(true);
@@ -93,9 +96,9 @@ export class Characters3DManager {
     ];
 
     fieldersConfig.forEach(([key, x, y, col, yaw], idx) => {
-      const inst = instantiateCharacter(col, { withBat: false, withCap: idx === 1 });
+      const inst = instantiateCharacter(col, { withBat: false, withCap: idx === 1, modelType: 'fielder' });
       const f = new CharacterController3D(inst, { yaw, scale: 0.85 });
-      f.setPosition(x, y, (y - 660) * 0.4);
+      f.setPosition(x, y);
       f.playIdle(true);
       this.characters.set(key, f);
       this.scene.add(f.group);
@@ -107,6 +110,7 @@ export class Characters3DManager {
 
     this.characters.forEach((char) => char.update(dt));
     this.syncGameState(state);
+    this.ballRetrieval.update(dt, state, this.characters);
   }
 
   private syncGameState(state: GameState): void {
@@ -127,7 +131,7 @@ export class Characters3DManager {
         bowler.setPosition(curX, CONFIG.layout.bowler.y, 0);
       } else if (state.bowlerPhase === 'DELIVERY' && this.prevBowlerPhase !== 'DELIVERY') {
         bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
-        bowler?.playPitch();
+        bowler?.playPitch(1.4, 2.0);
       }
     } else if (this.prevStateKind === 'BOWLING') {
       bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
@@ -147,13 +151,10 @@ export class Characters3DManager {
       } else if (outcome === 'SIX' || outcome === 'FOUR') {
         batter?.playCheer();
         f1?.playClap(); f2?.playClap(); f3?.playClap();
-      } else if (outcome === 'SINGLE') {
-        f1?.playRun();
-        setTimeout(() => f1?.playIdle(true), 1200);
       } else if (outcome === 'WINDOW' || outcome === 'CAR_GLASS' || outcome === 'SCOOTER') {
         batter?.playDefeated();
-        f2?.playDive();
       }
+      this.ballRetrieval.triggerRetrieval(state, this.characters);
       this.prevOutcome = outcome;
     }
 

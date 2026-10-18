@@ -88,5 +88,6 @@ export function createInitialState(): GameState {
     debugMode: false,
     selectedHitTarget: 'window',
     isPortrait: false,
+    isWaitingForBall: false,
   };
 }

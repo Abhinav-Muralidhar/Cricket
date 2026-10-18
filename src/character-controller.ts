@@ -4,7 +4,8 @@
  */
 
 import * as THREE from 'three';
-import type { LoadedCharacterInstance } from './model-loader.ts';
+import { CONFIG } from './config.ts';
+import { findBone, type LoadedCharacterInstance } from './model-loader.ts';
 
 export class CharacterController3D {
   public group: THREE.Group;
@@ -40,16 +41,28 @@ export class CharacterController3D {
     });
   }
 
-  public applyTransform(): void {
-    // 200 world units tall * configScale
-    const s = (200 * this.configScale) / this.instance.baseHeight;
+  public applyTransform(depthScale = 1.0): void {
+    // 200 world units tall * configScale * depthScale
+    const s = (200 * this.configScale * depthScale) / this.instance.baseHeight;
     this.group.scale.set(this.isLeftHanded ? -s : s, s, s);
     this.group.rotation.y = this.yaw;
   }
 
   public setPosition(worldX: number, worldY: number, z = 0): void {
-    // 2D: top-left (0,0), bottom is y=800. 3D: feet at (worldX, 800 - worldY, z)
-    this.group.position.set(worldX, 800 - worldY, z);
+    // Fielder y varies slightly for depth, and scale with a depth factor by y
+    const depthScale = Math.max(0.7, 1.0 + (worldY - 690) * 0.0012);
+    this.applyTransform(depthScale);
+    const depthZ = z !== 0 ? z : (worldY - 690) * 0.45;
+    this.group.position.set(worldX, 800 - worldY, depthZ);
+  }
+
+  public getBone2DPosition(boneName: string): { x: number; y: number } | null {
+    const bone = findBone(this.group, boneName);
+    if (!bone) return null;
+    this.group.updateMatrixWorld(true);
+    const pos = new THREE.Vector3();
+    bone.getWorldPosition(pos);
+    return { x: pos.x, y: 800 - pos.y };
   }
 
   public setYaw(yaw: number): void {
@@ -123,11 +136,11 @@ export class CharacterController3D {
     this.playClip('run', { loop: true, crossFadeDuration: 0.15 });
   }
 
-  public playPitch(onFinished?: () => void): void {
-    this.playClip('pitch', { loop: false, crossFadeDuration: 0.1, onFinished });
+  public playPitch(startTime = 1.4, timeScale = 2.0, onFinished?: () => void): void {
+    this.playClip('pitch', { loop: false, startTime, timeScale, crossFadeDuration: 0.1, onFinished });
   }
 
-  public playSwing(startTime = 0.18, timeScale = 1.3, onFinished?: () => void): void {
+  public playSwing(startTime = CONFIG.swingStartOffset, timeScale = CONFIG.swingTimeScale, onFinished?: () => void): void {
     this.playClip('swing', { loop: false, startTime, timeScale, crossFadeDuration: 0.08, onFinished });
   }
 

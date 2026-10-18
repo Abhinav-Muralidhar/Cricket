@@ -123,4 +123,5 @@ export interface GameState {
   selectedHitTarget: HitTargetKey;
   isPortrait: boolean;
   poseEditorActive?: boolean;
+  isWaitingForBall?: boolean;
 }
