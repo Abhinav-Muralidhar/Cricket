@@ -5,6 +5,7 @@
 import { CONFIG, PALETTE } from './config.ts';
 import { EASINGS } from './animation.ts';
 import { isAudioMuted } from './audio.ts';
+import { isStandalonePWA } from './pwa.ts';
 import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
 
@@ -56,13 +57,17 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     ctx.lineWidth = 1.5; ctx.strokeStyle = alive ? PALETTE.roadLines : 'rgba(150, 150, 150, 0.3)'; ctx.stroke();
   }
 
-  // Audio mute button (top right: cam.cssWidth - 54, 18)
-  const sndX = cam.cssWidth - 54, sndY = 18;
+  // Top-right buttons: Fullscreen (cam.cssWidth - 96) & Audio mute (cam.cssWidth - 54)
+  const sndX = cam.cssWidth - 54, fsX = cam.cssWidth - 96, btnY = 18;
+  const isFs = typeof document !== 'undefined' && !!document.fullscreenElement;
   ctx.save();
   ctx.fillStyle = 'rgba(30, 30, 36, 0.70)';
-  ctx.beginPath(); ctx.roundRect(sndX, sndY, 36, 36, 18); ctx.fill();
-  ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(isAudioMuted() ? '🔇' : '🔊', sndX + 18, sndY + 18);
+  ctx.beginPath(); ctx.roundRect(fsX, btnY, 36, 36, 18); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(sndX, btnY, 36, 36, 18); ctx.fill();
+  ctx.fillStyle = '#FFFFFF'; ctx.font = '16px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(isFs ? '✕' : '⛶', fsX + 18, btnY + 18);
+  ctx.font = '16px sans-serif';
+  ctx.fillText(isAudioMuted() ? '🔇' : '🔊', sndX + 18, btnY + 18);
   ctx.restore();
 
   // 2. Punchy center score badge & bottom CC subtitle
@@ -92,9 +97,8 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     // A. Expanding shockwave ring behind number
     ctx.save();
     ctx.translate(cam.cssWidth / 2, cam.cssHeight / 2 - 25 + floatY);
-    const ringR = 20 + t * 75, ringAlpha = Math.max(0, 0.55 - t * 0.55);
-    ctx.strokeStyle = numColor; ctx.globalAlpha = ringAlpha; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, ringR, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = numColor; ctx.globalAlpha = Math.max(0, 0.55 - t * 0.55); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 20 + t * 75, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
 
     // B. Punchy Center Number & mini tag
@@ -147,8 +151,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
     ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
     ctx.textAlign = 'center';
-    const cx = cam.cssWidth / 2;
-    const cy = cam.cssHeight / 2;
+    const cx = cam.cssWidth / 2, cy = cam.cssHeight / 2;
 
     if (state.state === 'TITLE') {
       ctx.fillStyle = PALETTE.buildingA; ctx.font = '900 46px sans-serif'; ctx.fillText('GULLY CRICKET', cx, cy - 82);
@@ -170,10 +173,19 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
       ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('TAP OR PRESS SPACE TO RETRY', cx, cy + 65);
     }
 
-    // 5. Creator credit link (Title & Game Over only)
+    // 5. Creator credit link & corner PWA install button (Title & Game Over only)
     ctx.fillStyle = 'rgba(245, 233, 207, 0.48)';
     ctx.font = '500 12px system-ui, -apple-system, Roboto, sans-serif';
     ctx.fillText('Developed by Abhinav M ↗', cx, cam.cssHeight - 20);
+
+    if (!isStandalonePWA()) {
+      const ix = cam.cssWidth - 108, iy = cam.cssHeight - 40;
+      ctx.fillStyle = 'rgba(30, 30, 36, 0.75)';
+      ctx.beginPath(); ctx.roundRect(ix, iy, 92, 26, 13); ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#FFFFFF'; ctx.font = '500 11px system-ui, sans-serif';
+      ctx.fillText('📲 Install App', ix + 46, iy + 13);
+    }
   }
 
   ctx.restore();
@@ -181,10 +193,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
 
 export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (!state.debugMode) return;
-  const sweetX = CONFIG.layout.sweetSpot.x;
-  const groundY = CONFIG.street.groundY;
-  const zoneY = groundY + 14;
-
+  const sweetX = CONFIG.layout.sweetSpot.x, groundY = CONFIG.street.groundY, zoneY = groundY + 14;
   ctx.save();
 
   // Outlined Hit Targets with coordinates and selection highlight
@@ -198,8 +207,7 @@ export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState):
     ctx.save();
     ctx.fillStyle = isSel ? 'rgba(250, 204, 21, 0.25)' : 'rgba(56, 189, 248, 0.12)';
     ctx.fillRect(r.x, r.y, r.width, r.height);
-    ctx.strokeStyle = isSel ? '#FACC15' : '#38BDF8';
-    ctx.lineWidth = isSel ? 3 : 1.5;
+    ctx.strokeStyle = isSel ? '#FACC15' : '#38BDF8'; ctx.lineWidth = isSel ? 3 : 1.5;
     if (!isSel) ctx.setLineDash([6, 4]);
     ctx.strokeRect(r.x, r.y, r.width, r.height);
     ctx.fillStyle = isSel ? '#FACC15' : '#FFFFFF'; ctx.font = isSel ? 'bold 13px monospace' : '11px monospace';
@@ -215,17 +223,10 @@ export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState):
   ctx.setLineDash([]);
 
   const drawZone = (minO: number, maxO: number, col: string, lbl: string) => {
-    const x1 = sweetX + minO;
-    const x2 = sweetX + maxO;
-    const sx = Math.min(x1, x2);
-    const w = Math.abs(x2 - x1);
-    ctx.fillStyle = col;
-    ctx.fillRect(sx, zoneY, w, 22);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(sx, zoneY, w, 22);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px monospace';
+    const sx = Math.min(sweetX + minO, sweetX + maxO), w = Math.abs(maxO - minO);
+    ctx.fillStyle = col; ctx.fillRect(sx, zoneY, w, 22);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.strokeRect(sx, zoneY, w, 22);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
     ctx.fillText(lbl, sx + w / 2 - 8, zoneY + 15);
   };
 

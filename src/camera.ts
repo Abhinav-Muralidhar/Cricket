@@ -30,8 +30,13 @@ export function computeCamera(cssWidth: number, cssHeight: number, dpr: number):
     scale = cssWidth / minRequiredWidth;
     visibleWorldWidth = minRequiredWidth;
   }
-  const visibleWorldHeight = worldH;
-  const worldTop = 0;
+  let worldTop = 0;
+  let visibleWorldHeight = cssHeight / scale;
+  if (visibleWorldHeight < worldH) {
+    worldTop = worldH - visibleWorldHeight;
+  } else {
+    visibleWorldHeight = worldH;
+  }
 
   // Center pitch action (wickets to bowler) perfectly in frame
   const actionCenter = (mustShowLeft + mustShowRight) / 2;

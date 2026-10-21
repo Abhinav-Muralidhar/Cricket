@@ -17,6 +17,8 @@ export interface InputHandlers {
   onCycle3DCharacter?: () => void;
   onNudge3DCharacter?: (dx: number, dy: number, dYaw: number) => void;
   onAudioToggle?: () => void;
+  onFullscreenToggle?: () => void;
+  onInstallClick?: () => void;
   is3DMode?: () => boolean;
   isTitleOrGameOver?: () => boolean;
   onAuthorClick?: () => void;
@@ -41,16 +43,28 @@ export class InputManager {
       const clientX = e.clientX - rect.left;
       const clientY = e.clientY - rect.top;
 
-      // Audio mute/unmute touch region: top right corner (clientX >= rect.width - 65 && clientY <= 65)
-      if (clientX >= rect.width - 65 && clientY <= 65) {
-        this.handlers.onAudioToggle?.();
-        return;
+      // Top right buttons: Audio mute (rightmost) & Fullscreen (adjacent left)
+      if (clientY <= 60) {
+        if (clientX >= rect.width - 56) {
+          this.handlers.onAudioToggle?.();
+          return;
+        }
+        if (clientX >= rect.width - 105) {
+          this.handlers.onFullscreenToggle?.();
+          return;
+        }
       }
 
-      // Author credit click region (only during Title, Loading, or Game Over)
-      if (this.handlers.isTitleOrGameOver?.() && Math.abs(clientX - rect.width / 2) < 130 && clientY >= rect.height - 42) {
-        this.handlers.onAuthorClick?.();
-        return;
+      // Title/Game Over corner buttons: Author credit (center bottom) & PWA Install (bottom right)
+      if (this.handlers.isTitleOrGameOver?.()) {
+        if (clientX >= rect.width - 115 && clientY >= rect.height - 48) {
+          this.handlers.onInstallClick?.();
+          return;
+        }
+        if (Math.abs(clientX - rect.width / 2) < 130 && clientY >= rect.height - 42) {
+          this.handlers.onAuthorClick?.();
+          return;
+        }
       }
 
       this.handlers.onAction();
@@ -60,9 +74,11 @@ export class InputManager {
     this.canvas.addEventListener('pointermove', (e: PointerEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = e.clientX - rect.left, clientY = e.clientY - rect.top;
-      const isMute = clientX >= rect.width - 65 && clientY <= 65;
+      const isMute = clientX >= rect.width - 56 && clientY <= 60;
+      const isFs = clientX >= rect.width - 105 && clientX < rect.width - 56 && clientY <= 60;
       const isAuthor = !!this.handlers.isTitleOrGameOver?.() && Math.abs(clientX - rect.width / 2) < 130 && clientY >= rect.height - 42;
-      this.canvas.style.cursor = isMute || isAuthor ? 'pointer' : 'default';
+      const isInstall = !!this.handlers.isTitleOrGameOver?.() && clientX >= rect.width - 115 && clientY >= rect.height - 48;
+      this.canvas.style.cursor = isMute || isFs || isAuthor || isInstall ? 'pointer' : 'default';
     });
 
     this.canvas.addEventListener('contextmenu', (e: MouseEvent) => {
@@ -79,6 +95,12 @@ export class InputManager {
       if (e.code === 'KeyM') {
         e.preventDefault();
         this.handlers.onAudioToggle?.();
+        return;
+      }
+
+      if (e.code === 'KeyF') {
+        e.preventDefault();
+        this.handlers.onFullscreenToggle?.();
         return;
       }
 

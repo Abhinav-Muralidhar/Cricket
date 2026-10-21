@@ -23,6 +23,9 @@ export class Characters3DManager {
   private prevIsSwinging = false;
   private bowlerRunStartX = 0;
   private ballRetrieval = new BallRetrievalManager();
+  private lastW = 0;
+  private lastH = 0;
+  private lastDpr = 0;
   private debugClipNames = ['idle', 'swing', 'pitch', 'run', 'slide', 'dive', 'defeated', 'clap', 'cheer'];
 
   constructor(canvas: HTMLCanvasElement) {
@@ -156,18 +159,19 @@ export class Characters3DManager {
   public render(cam: CameraViewport): void {
     if (!this.isReady) return;
 
-    const w = cam.cssWidth * cam.dpr;
-    const h = cam.cssHeight * cam.dpr;
-    if (this.renderer.domElement.width !== w || this.renderer.domElement.height !== h) {
-      this.renderer.setSize(cam.cssWidth, cam.cssHeight, false);
+    if (this.lastW !== cam.cssWidth || this.lastH !== cam.cssHeight || this.lastDpr !== cam.dpr) {
+      this.lastW = cam.cssWidth;
+      this.lastH = cam.cssHeight;
+      this.lastDpr = cam.dpr;
       this.renderer.setPixelRatio(cam.dpr);
+      this.renderer.setSize(cam.cssWidth, cam.cssHeight, false);
     }
 
     // Orthographic camera: left=worldLeft, right=worldLeft+visW, bottom=0, top=800
     this.camera.left = cam.worldLeft;
     this.camera.right = cam.worldLeft + cam.visibleWorldWidth;
-    this.camera.top = CONFIG.world.height;
-    this.camera.bottom = 0;
+    this.camera.top = CONFIG.world.height - cam.worldTop;
+    this.camera.bottom = -cam.worldTop;
     this.camera.updateProjectionMatrix();
 
     this.renderer.render(this.scene, this.camera);

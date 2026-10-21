@@ -13,8 +13,12 @@ import type { HitTargetKey } from './types.ts';
 import { initAudio, toggleAudioMute } from './audio.ts';
 
 import { Characters3DManager } from './characters3d.ts';
+import { inject } from '@vercel/analytics';
+import { initPWA, promptPWAInstall } from './pwa.ts';
 
 function initGame(): void {
+  inject();
+  initPWA();
   const bgCanvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   const threeCanvas = document.getElementById('three-canvas') as HTMLCanvasElement;
   const hudCanvas = document.getElementById('hud-canvas') as HTMLCanvasElement;
@@ -48,6 +52,7 @@ function initGame(): void {
 
   resize();
   window.addEventListener('resize', resize);
+  document.addEventListener('fullscreenchange', resize);
 
   // Input manager: pointer on top hudCanvas, debug toggles, 1-9 clips, 3D nudging
   new InputManager(hudCanvas, {
@@ -59,6 +64,13 @@ function initGame(): void {
     onAudioToggle: () => {
       initAudio();
       toggleAudioMute();
+    },
+    onFullscreenToggle: () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
     },
     onDebugToggle: () => {
       const isAllowed = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.search.includes('debug=true');
@@ -104,6 +116,9 @@ function initGame(): void {
     isTitleOrGameOver: () => state.state === 'TITLE' || state.state === 'GAME_OVER' || (CONFIG.use3DCharacters && !characters3D.isReady),
     onAuthorClick: () => {
       window.open('https://github.com/Abhinav-Muralidhar', '_blank', 'noopener,noreferrer');
+    },
+    onInstallClick: () => {
+      promptPWAInstall();
     },
   });
 
