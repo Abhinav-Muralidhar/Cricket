@@ -91,7 +91,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     } else if (res.livesLost > 0) {
       numText = '-1'; tag = 'LOST BALL'; numColor = '#F87171';
       ccDesc = res.outcome === 'CAR_GLASS' ? 'CAR HIT • BALL LOST' : res.outcome === 'WINDOW' ? 'WINDOW SMASH • BALL LOST' :
-               res.outcome === 'AC_UNIT' ? 'AC UNIT HIT • BALL LOST' : res.outcome === 'NEWSPAPER' ? 'NEWSPAPER HIT • BALL LOST' : res.description;
+        res.outcome === 'AC_UNIT' ? 'AC UNIT HIT • BALL LOST' : res.outcome === 'NEWSPAPER' ? 'NEWSPAPER HIT • BALL LOST' : res.description;
     }
 
     // A. Expanding shockwave ring behind number
@@ -165,6 +165,15 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
       ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('TAP OR PRESS SPACE TO RETRY', cx, cy + 65);
     }
   }
+
+  // 5. Creator credit stuck minimal to bottom of screen
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(245, 233, 207, 0.38)';
+  ctx.font = '500 11px system-ui, -apple-system, Roboto, sans-serif';
+  ctx.fillText('Developed by Abhinav M', cam.cssWidth / 2, cam.cssHeight - 14);
+  ctx.restore();
+
   ctx.restore();
 }
 

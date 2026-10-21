@@ -9,6 +9,7 @@ import { drawCharacter } from './characters.ts';
 import { drawDynamicEffects } from './effects.ts';
 import { drawHUD, drawWorldDebug, drawRotatePhoneOverlay } from './hud.ts';
 import type { GameState } from './types.ts';
+import type { Characters3DManager } from './characters3d.ts';
 
 // Re-export camera so existing imports from './render.ts' still work
 export { computeCamera } from './camera.ts';
@@ -30,7 +31,7 @@ function drawWickets(ctx: CanvasRenderingContext2D, state: GameState): void {
   const stumps = [
     { x: w.x + 6, y: w.y - 6, col: '#784D2B', rot: -Math.min(0.55, t * 1.5), dx: -t * 15, dy: t * 5 },
     { x: w.x + 3, y: w.y - 3, col: '#8B5E3C', rot: -Math.min(1.10, t * 2.8), dx: -t * 35, dy: t * 12 },
-    { x: w.x,     y: w.y,     col: '#9E6D44', rot: -Math.min(0.75, t * 2.0), dx: -t * 22, dy: t * 8 },
+    { x: w.x, y: w.y, col: '#9E6D44', rot: -Math.min(0.75, t * 2.0), dx: -t * 22, dy: t * 8 },
   ];
 
   for (const s of stumps) {
@@ -139,7 +140,45 @@ function drawBall(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 }
 
-import type { Characters3DManager } from './characters3d.ts';
+function drawLoadingScreen(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
+  ctx.save();
+  ctx.fillStyle = 'rgba(18, 18, 24, 0.88)';
+  ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
+
+  const cx = cam.cssWidth / 2;
+  const cy = cam.cssHeight / 2;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = PALETTE.buildingA;
+  ctx.font = '900 44px sans-serif';
+  ctx.fillText('GULLY CRICKET', cx, cy - 44);
+
+  ctx.fillStyle = PALETTE.cream;
+  ctx.font = '16px sans-serif';
+  ctx.fillText('Neighborhood Chaos', cx, cy - 12);
+
+  // Animated loading bar
+  const barW = 200, barH = 5, barX = cx - barW / 2, barY = cy + 24;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
+
+  const anim = (Math.sin(performance.now() * 0.0035) + 1) / 2;
+  const thumbW = 60, thumbX = barX + anim * (barW - thumbW);
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath(); ctx.roundRect(thumbX, barY, thumbW, barH, 2.5); ctx.fill();
+
+  ctx.fillStyle = 'rgba(245, 233, 207, 0.75)';
+  ctx.font = '12px monospace';
+  ctx.fillText('Loading pitch & players...', cx, cy + 50);
+
+  // Minimal creator credit stuck to bottom
+  ctx.fillStyle = 'rgba(245, 233, 207, 0.40)';
+  ctx.font = '500 11px system-ui, Roboto, sans-serif';
+  ctx.fillText('Developed by Abhinav M', cx, cam.cssHeight - 16);
+
+  ctx.restore();
+}
 
 export function renderGame(
   bgCtx: CanvasRenderingContext2D,
@@ -162,16 +201,16 @@ export function renderGame(
   bgCtx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
   drawBackground(bgCtx, cam);
 
+  // Hold in atmospheric loading screen while 3D characters initialize
+  if (CONFIG.use3DCharacters && characters3D && !characters3D.isReady) {
+    hudCtx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
+    drawLoadingScreen(hudCtx, cam);
+    return;
+  }
+
   // 2. Layer 2: 3D Characters via Three.js
   if (CONFIG.use3DCharacters && characters3D) {
     characters3D.render(cam);
-    if (!characters3D.isReady) {
-      hudCtx.save();
-      hudCtx.fillStyle = 'rgba(0, 0, 0, 0.4)'; hudCtx.fillRect(cam.cssWidth * cam.dpr / 2 - 120, 20, 240, 36);
-      hudCtx.fillStyle = '#FFD9A0'; hudCtx.font = 'bold 14px system-ui, sans-serif'; hudCtx.textAlign = 'center';
-      hudCtx.fillText('Loading 3D Characters...', cam.cssWidth * cam.dpr / 2, 44);
-      hudCtx.restore();
-    }
   }
 
   // 3. Layer 3: 2D dynamic effects, wickets, ball, and optional 2D fallback rigs

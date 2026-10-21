@@ -52,6 +52,7 @@ function initGame(): void {
   // Input manager: pointer on top hudCanvas, debug toggles, 1-9 clips, 3D nudging
   new InputManager(hudCanvas, {
     onAction: () => {
+      if (CONFIG.use3DCharacters && !characters3D.isReady) return;
       initAudio();
       handlePlayerSwing(state);
     },
@@ -110,7 +111,9 @@ function initGame(): void {
       poseEditor.update(dt);
       poseEditor.render(hudCtx!, camera);
     } else {
-      updateGame(state, dt);
+      if (!CONFIG.use3DCharacters || characters3D.isReady) {
+        updateGame(state, dt);
+      }
       if (CONFIG.use3DCharacters) {
         characters3D.update(dt, state);
       }

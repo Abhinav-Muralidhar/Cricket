@@ -1,17 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Gully Cricket: Neighborhood Chaos</title>
-    <link rel="stylesheet" href="/src/style.css" />
-  </head>
-  <body>
-    <div id="game-container">
-      <canvas id="game-canvas"></canvas>
-      <canvas id="three-canvas"></canvas>
-      <canvas id="hud-canvas"></canvas>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Gully Cricket: Neighborhood Chaos</title>
+  <meta name="description"
+    content="Play authentic Indian gully cricket in your browser! Experience real ball physics, smashable neighborhood targets (car glass, windows, AC units), and nostalgic street soundscapes." />
+  <meta name="keywords"
+    content="gully cricket, street cricket, cricket game, web cricket, canvas game, 3d cricket, browser game" />
+  <meta name="author" content="Abhinav M" />
+  <meta name="theme-color" content="#121218" />
+
+  <!-- Open Graph / Facebook / WhatsApp / Discord / LinkedIn -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Gully Cricket: Neighborhood Chaos" />
+  <meta property="og:description"
+    content="Authentic Indian street cricket in your browser. Real physics, smashable cars & windows, and nostalgic street vibes!" />
+  <meta property="og:image" content="/bg.jpg" />
+  <meta property="og:image:alt" content="Gully Cricket Neighborhood Pitch" />
+  <meta property="og:site_name" content="Gully Cricket" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Gully Cricket: Neighborhood Chaos" />
+  <meta name="twitter:description"
+    content="Authentic Indian street cricket in your browser. Real physics, smashable cars & windows, and nostalgic street vibes!" />
+  <meta name="twitter:image" content="/bg.jpg" />
+
+  <!-- Developer & Game SEO (JSON-LD) -->
+  <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Gully Cricket: Neighborhood Chaos",
+        "headline": "Gully Cricket: Neighborhood Chaos",
+        "description": "Authentic Indian street cricket browser game with realistic physics, reactive neighborhood targets, 3D animated characters, and immersive soundscapes.",
+        "genre": ["Sports", "Arcade"],
+        "gamePlatform": ["Web Browser", "Desktop", "Mobile"],
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "inLanguage": "en",
+        "image": "/bg.jpg",
+        "author": {
+          "@type": "Person",
+          "name": "Abhinav M",
+          "url": "https://github.com/abhinav"
+        },
+        "creator": {
+          "@type": "Person",
+          "name": "Abhinav M",
+          "url": "https://github.com/abhinav"
+        }
+      }
+    </script>
+
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+    <canvas id="three-canvas"></canvas>
+    <canvas id="hud-canvas"></canvas>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>
