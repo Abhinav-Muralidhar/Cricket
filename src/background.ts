@@ -30,6 +30,57 @@ export function loadBackgroundImage(onLoad?: () => void): void {
   };
 }
 
+export function getBgTransform(cam: CameraViewport): { drawX: number; drawY: number; drawW: number; drawH: number; coverScale: number } {
+  const imgW = bgImage?.naturalWidth || 1456;
+  const imgH = bgImage?.naturalHeight || 720;
+  const visW = cam.visibleWorldWidth;
+  const visH = CONFIG.world.height; // 800
+
+  // "cover" scaling guarantees zero black or empty bands on any aspect ratio or device
+  const coverScale = Math.max(visW / imgW, visH / imgH);
+  const drawW = imgW * coverScale;
+  const drawH = imgH * coverScale;
+
+  const centerX = cam.worldLeft + visW / 2;
+  const drawX = centerX - drawW / 2;
+  const drawY = visH - drawH;
+
+  return { drawX, drawY, drawW, drawH, coverScale };
+}
+
+export function updateResponsiveLayout(cam: CameraViewport): void {
+  const { drawX, drawY, coverScale } = getBgTransform(cam);
+  const toW = (ix: number, iy: number) => ({ x: drawX + ix * coverScale, y: drawY + iy * coverScale });
+
+  // 1. Red building open window (man on phone)
+  const win = toW(970, 100);
+  CONFIG.layout.window.x = win.x;
+  CONFIG.layout.window.y = win.y;
+  CONFIG.layout.window.width = 90 * coverScale;
+  CONFIG.layout.window.height = 100 * coverScale;
+
+  // 2. AC compressor unit below red building
+  const ac = toW(945, 255);
+  CONFIG.layout.acUnit.x = ac.x;
+  CONFIG.layout.acUnit.y = ac.y;
+  CONFIG.layout.acUnit.width = 55 * coverScale;
+  CONFIG.layout.acUnit.height = 45 * coverScale;
+
+  // 3. Uncle's newspaper on balcony
+  const news = toW(575, 245);
+  CONFIG.layout.newspaper.x = news.x;
+  CONFIG.layout.newspaper.y = news.y;
+  CONFIG.layout.newspaper.width = 50 * coverScale;
+  CONFIG.layout.newspaper.height = 45 * coverScale;
+
+  // 4. Parked car bounds in world coordinates
+  const car = toW(1260, 475);
+  CONFIG.layout.car.x = car.x;
+  CONFIG.layout.car.y = car.y;
+  CONFIG.layout.car.width = 196 * coverScale;
+  CONFIG.layout.car.height = 185 * coverScale;
+}
+
 export function drawBackground(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
   if (!isLoaded || !bgImage || !bgImage.naturalWidth || !bgImage.naturalHeight) {
     ctx.save();
@@ -44,21 +95,8 @@ export function drawBackground(ctx: CanvasRenderingContext2D, cam: CameraViewpor
     return;
   }
 
-  const imgW = bgImage.naturalWidth;
-  const imgH = bgImage.naturalHeight;
-  const visW = cam.visibleWorldWidth;
-  const visH = CONFIG.world.height; // 800
-
-  // "cover" scaling: scale so image fully covers visible area (no empty bands on any side)
-  const coverScale = Math.max(visW / imgW, visH / imgH);
-  const drawW = imgW * coverScale;
-  const drawH = imgH * coverScale;
-
-  // Anchored to bottom-centre of visible area:
-  // Center horizontally relative to visible camera frame, anchor bottom edge to world bottom
-  const centerX = cam.worldLeft + visW / 2;
-  const drawX = centerX - drawW / 2;
-  const drawY = visH - drawH; // Bottom-anchored; crops top when drawH > visH
+  const { drawX, drawY, drawW, drawH } = getBgTransform(cam);
+  updateResponsiveLayout(cam);
 
   ctx.save();
   ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);

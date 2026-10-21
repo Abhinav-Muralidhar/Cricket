@@ -144,7 +144,7 @@ export function setupHitTrajectory(ball: BallState, outcome: OutcomeType, timing
   } else if (outcome === 'NEWSPAPER') {
     ball.target = { x: l.newspaper.x + l.newspaper.width / 2, y: l.newspaper.y + l.newspaper.height / 2 };
   } else if (outcome === 'CAR_GLASS') {
-    ball.target = { x: l.car.x + 194, y: l.car.y - 37 };
+    ball.target = { x: l.car.x + l.car.width * 0.12, y: l.car.y + l.car.height * 0.16 };
   } else if (outcome === 'SCOOTER') {
     ball.target = { x: l.scooter.x + l.scooter.width / 2, y: l.scooter.y + l.scooter.height / 2 };
   } else if (outcome === 'SIX') {

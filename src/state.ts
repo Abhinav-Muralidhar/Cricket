@@ -10,6 +10,7 @@ import type { GameState } from './types.ts';
 export { createRig, createBatterRig, createBowlerRig, createInitialState } from './state-init.ts';
 
 export function startNewDelivery(state: GameState): void {
+  state.lastResult = null;
   state.ballCount++;
   state.currentBallSpeed = Math.min(CONFIG.ball.maxSpeed, CONFIG.ball.baseSpeed + (state.ballCount - 1) * CONFIG.ball.speedIncrementPerBall);
   state.bowlerRig.x = CONFIG.layout.bowler.x + 25;

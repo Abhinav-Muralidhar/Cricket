@@ -7,6 +7,8 @@ import type { GameState } from './types.ts';
 
 /** Renders hazard impact effects: sparks, cracks, and car indicators */
 export function drawDynamicEffects(ctx: CanvasRenderingContext2D, state: GameState): void {
+  // Only show impact effects after ball arrives at the target (RESULT state)
+  if (state.state !== 'RESULT') return;
   const res = state.lastResult;
   if (!res) return;
   const t = state.resultTimer;
@@ -46,8 +48,8 @@ function drawWindowBreak(ctx: CanvasRenderingContext2D, res: NonNullable<GameSta
 function drawCarHit(ctx: CanvasRenderingContext2D, res: NonNullable<GameState['lastResult']>, t: number): void {
   if (res.outcome !== 'CAR_GLASS' && !res.isCarGlassBroken) return;
   const c = CONFIG.layout.car;
-  // Impact precisely on the car's window glass
-  const impactX = c.x + 194, impactY = c.y - 37;
+  // Impact precisely on the car's rear quarter glass
+  const impactX = c.x + c.width * 0.12, impactY = c.y + c.height * 0.16;
 
   // Glass crack lines radiating across car window glass
   ctx.save();
@@ -69,7 +71,7 @@ function drawCarHit(ctx: CanvasRenderingContext2D, res: NonNullable<GameState['l
   }
   ctx.restore();
 
-  // Hazard indicator — realistic automotive flasher cadence & optics
+  // Hazard indicator — placed precisely on the car rear taillight
   if (t > 0.35) {
     const elapsed = t - 0.35;
     const cycle = elapsed % 0.65; // ~92 flashes/min cadence
@@ -83,8 +85,8 @@ function drawCarHit(ctx: CanvasRenderingContext2D, res: NonNullable<GameState['l
     }
 
     if (intensity > 0.02) {
-      const indX = c.x + c.width - 10;
-      const indY = c.y + c.height * 0.1;
+      const indX = c.x + c.width * 0.100;
+      const indY = c.y + c.height * 0.297;
       drawRealisticIndicator(ctx, indX, indY, intensity);
     }
   }

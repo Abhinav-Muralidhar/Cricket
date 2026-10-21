@@ -163,9 +163,9 @@ export const CONFIG: GameConfig = {
   layout: {
     skyline: { y: 155 },
     buildingA: { x: 340, y: 110, width: 290, height: 386 },
-    window: { x: 1085, y: 105, width: 100, height: 110 },
-    acUnit: { x: 840, y: 230, width: 55, height: 45 },
-    newspaper: { x: 665, y: 315, width: 55, height: 55 },
+    window: { x: 1070, y: 110, width: 100, height: 110 },
+    acUnit: { x: 1045, y: 285, width: 58, height: 46 },
+    newspaper: { x: 630, y: 275, width: 55, height: 50 },
     car: { x: 1380, y: 580, width: 165, height: 50 },
     scooter: { x: 10, y: 580, width: 140, height: 110 },
     electricPole: { x: 645, y: 40, width: 16, height: 504 },
@@ -214,7 +214,7 @@ export const CONFIG: GameConfig = {
   pitchReleaseTime: 0.35,
   swingStartOffset: 0.85,
   swingTimeScale: 2.2,
-  batOffset: { x: 0, y: 0, z: 0 },
+  batOffset: { x: -0.5, y: 7.5, z: 1.2 },
   batRotation: { x: -0.2, y: 1.2, z: 0.0 },
   batScale: { x: 1, y: 1, z: 1 },
   characters3D: {
