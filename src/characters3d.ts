@@ -74,7 +74,7 @@ export class Characters3DManager {
       yaw: c3d.batter.yaw, scale: c3d.batter.scale, isLeftHanded: c3d.batter.isLeftHanded,
     });
     batter.setPosition(l.batter.x, l.batter.y, 0);
-    batter.playIdle(false);
+    batter.playStance();
     this.characters.set('batter', batter);
     this.scene.add(batter.group);
 
@@ -111,6 +111,9 @@ export class Characters3DManager {
         bowler?.playRun();
         batter?.playStance();
       }
+      if (!state.isSwinging && batter && batter.currentActionName !== 'battingStance' && batter.currentActionName !== 'swing') {
+        batter.playStance();
+      }
       if (state.bowlerPhase === 'RUN_UP' && bowler) {
         const t = Math.min(1, state.bowlerTimer / 0.55);
         const curX = this.bowlerRunStartX + (CONFIG.layout.bowler.x - this.bowlerRunStartX) * t;
@@ -140,7 +143,7 @@ export class Characters3DManager {
       } else if (outcome === 'WINDOW' || outcome === 'CAR_GLASS' || outcome === 'SCOOTER' || outcome === 'AC_UNIT' || outcome === 'NEWSPAPER') {
         batter?.playDefeated();
       } else {
-        batter?.playIdle(false);
+        batter?.playStance();
       }
       this.ballRetrieval.triggerRetrieval(state, this.characters);
     }

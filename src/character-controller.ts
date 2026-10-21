@@ -133,6 +133,10 @@ export class CharacterController3D {
   }
 
   public playIdle(randomOffset = true): void {
+    if (this.instance.actions.has('battingStance')) {
+      this.playStance();
+      return;
+    }
     this.playClip('idle', { loop: true, timeScale: 1.0, crossFadeDuration: 0.2 });
     if (randomOffset && this.currentAction) {
       const clip = this.currentAction.getClip();

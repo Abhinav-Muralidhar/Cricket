@@ -16,6 +16,7 @@ export interface InputHandlers {
   onDebugKey?: (code: string) => boolean;
   onCycle3DCharacter?: () => void;
   onNudge3DCharacter?: (dx: number, dy: number, dYaw: number) => void;
+  onAudioToggle?: () => void;
   is3DMode?: () => boolean;
 }
 
@@ -40,7 +41,13 @@ export class InputManager {
       const canvasX = (clientX / rect.width) * this.canvas.width;
       const canvasY = (clientY / rect.height) * this.canvas.height;
 
-      // Debug toggle touch region: top right corner (x: 560..710, y: 15..75)
+      // Audio mute/unmute touch region: top right corner (clientX >= rect.width - 65 && clientY <= 65)
+      if (clientX >= rect.width - 65 && clientY <= 65) {
+        this.handlers.onAudioToggle?.();
+        return;
+      }
+
+      // Debug toggle touch region: top center right
       if (canvasX >= 560 && canvasX <= 710 && canvasY >= 15 && canvasY <= 75) {
         this.handlers.onDebugToggle();
         return;
@@ -59,6 +66,12 @@ export class InputManager {
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
 
       const inPoseEditor = !!this.handlers.isPoseEditorActive?.();
+
+      if (e.code === 'KeyM') {
+        e.preventDefault();
+        this.handlers.onAudioToggle?.();
+        return;
+      }
 
       if (e.code === 'KeyE') {
         e.preventDefault();

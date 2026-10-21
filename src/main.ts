@@ -10,6 +10,7 @@ import { loadBackgroundImage } from './background.ts';
 import { InputManager } from './input.ts';
 import { PoseEditor } from './pose-editor.ts';
 import type { HitTargetKey } from './types.ts';
+import { initAudio, toggleAudioMute } from './audio.ts';
 
 import { Characters3DManager } from './characters3d.ts';
 
@@ -50,7 +51,14 @@ function initGame(): void {
 
   // Input manager: pointer on top hudCanvas, debug toggles, 1-9 clips, 3D nudging
   new InputManager(hudCanvas, {
-    onAction: () => handlePlayerSwing(state),
+    onAction: () => {
+      initAudio();
+      handlePlayerSwing(state);
+    },
+    onAudioToggle: () => {
+      initAudio();
+      toggleAudioMute();
+    },
     onDebugToggle: () => {
       state.debugMode = !state.debugMode;
       if (state.debugMode) {

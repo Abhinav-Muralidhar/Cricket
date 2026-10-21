@@ -5,6 +5,7 @@
 import { CONFIG } from './config.ts';
 import { BATTER_CLIPS, BOWLER_CLIPS, FIELDER_CLIPS } from './poses.ts';
 import { evaluateTiming, setupHitTrajectory } from './timing.ts';
+import { playBatHit, playSwingMiss, playWicketsClatter, playGlassBreak, playCarAlarm, playBallDelivery } from './audio.ts';
 import type { GameState } from './types.ts';
 
 export { createRig, createBatterRig, createBowlerRig, createInitialState } from './state-init.ts';
@@ -62,6 +63,7 @@ export function handlePlayerSwing(state: GameState): void {
   const result = evaluateTiming(offsetPx, state.currentBallSpeed);
 
   if (result.outcome !== 'MISS') {
+    playBatHit(result.outcome === 'SIX' ? 'PERFECT' : result.outcome === 'FOUR' ? 'GOOD' : 'EDGED');
     state.lastResult = result;
     state.score += result.runsScored;
     state.lives -= result.livesLost;
@@ -71,7 +73,6 @@ export function handlePlayerSwing(state: GameState): void {
 
     const allFielders = [state.fielder1Rig, state.fielder2Rig, state.fielder3Rig];
     const allFieldAnim = [state.fielder1Animator, state.fielder2Animator, state.fielder3Animator];
-
     if (result.outcome === 'SIX' || result.outcome === 'FOUR') {
       state.batterRig.expression = 'smile';
       allFielders.forEach((r) => (r.expression = 'sad'));
@@ -85,6 +86,7 @@ export function handlePlayerSwing(state: GameState): void {
       allFieldAnim.forEach((a) => a.play(FIELDER_CLIPS.handsOnHead, true));
     }
   } else {
+    playSwingMiss();
     state.lastResult = result;
   }
 }
@@ -130,6 +132,7 @@ export function updateGame(state: GameState, dt: number): void {
         const releaseTime = CONFIG.use3DCharacters ? CONFIG.pitchReleaseTime : 0.22;
         if (!state.isBallReleased && (state.bowlerTimer >= releaseTime || state.bowlerPhase === 'RELEASED')) {
           state.isBallReleased = true;
+          playBallDelivery();
           state.ball.active = true;
           state.ball.startPos = { x: state.ball.x, y: state.ball.y };
         }
@@ -165,13 +168,11 @@ export function updateGame(state: GameState, dt: number): void {
         state.batterRig.parts.head.angle += (targetHead - state.batterRig.parts.head.angle) * Math.min(1, 10 * delta);
 
         if (state.ball.x <= CONFIG.layout.wicket.x + CONFIG.layout.wicket.width) {
+          playWicketsClatter();
           state.lives = Math.max(0, state.lives - 1);
-          state.lastResult = {
-            outcome: 'BOWLED', timingRating: state.hasSwungThisBall ? 'TOO_LATE' : 'NONE',
-            timingOffsetPx: state.ball.x - CONFIG.layout.sweetSpot.x,
-            timingOffsetMs: Math.round(((state.ball.x - CONFIG.layout.sweetSpot.x) / state.currentBallSpeed) * 1000),
-            description: 'BOWLED! BALL LOST (-1)', runsScored: 0, livesLost: 1, isWindowBroken: false, isScooterHit: false,
-          };
+          state.lastResult = { outcome: 'BOWLED', timingRating: state.hasSwungThisBall ? 'TOO_LATE' : 'NONE',
+            timingOffsetPx: state.ball.x - CONFIG.layout.sweetSpot.x, timingOffsetMs: Math.round(((state.ball.x - CONFIG.layout.sweetSpot.x) / state.currentBallSpeed) * 1000),
+            description: 'BOWLED! BALL LOST (-1)', runsScored: 0, livesLost: 1, isWindowBroken: false, isScooterHit: false };
           state.ball.active = false;
           state.ball.vx = -30; state.ball.vy = -60;
           state.batterRig.expression = 'wince'; state.bowlerRig.expression = 'smile';
@@ -206,7 +207,12 @@ export function updateGame(state: GameState, dt: number): void {
         if (!state.ball.trail) state.ball.trail = [];
         state.ball.trail.push({ x: state.ball.x, y: state.ball.y });
         if (state.ball.trail.length > 8) state.ball.trail.shift();
-        if (t >= 1) state.state = 'RESULT';
+        if (t >= 1) {
+          state.state = 'RESULT';
+          const o = state.lastResult?.outcome;
+          if (o === 'CAR_GLASS') { playGlassBreak(); playCarAlarm(); }
+          else if (o === 'WINDOW') playGlassBreak();
+        }
       }
       break;
     }
