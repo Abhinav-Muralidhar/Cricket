@@ -36,7 +36,7 @@ export class CharacterController3D {
         this.onFinishedCallback = null;
         cb();
       } else if (this.currentActionName !== 'idle') {
-        this.playClip('idle', { loop: true, crossFadeDuration: 0.25 });
+        this.playIdle();
       }
     });
   }
@@ -124,8 +124,16 @@ export class CharacterController3D {
     this.currentActionName = name;
   }
 
+  public playStance(): void {
+    if (this.instance.actions.has('battingStance')) {
+      this.playClip('battingStance', { loop: true, timeScale: 0.35, crossFadeDuration: 0.15 });
+    } else {
+      this.playIdle(false);
+    }
+  }
+
   public playIdle(randomOffset = true): void {
-    this.playClip('idle', { loop: true });
+    this.playClip('idle', { loop: true, timeScale: 1.0, crossFadeDuration: 0.2 });
     if (randomOffset && this.currentAction) {
       const clip = this.currentAction.getClip();
       this.currentAction.time = Math.random() * (clip?.duration ?? 1.0);
@@ -136,12 +144,30 @@ export class CharacterController3D {
     this.playClip('run', { loop: true, crossFadeDuration: 0.15 });
   }
 
-  public playPitch(startTime = 1.4, timeScale = 2.0, onFinished?: () => void): void {
-    this.playClip('pitch', { loop: false, startTime, timeScale, crossFadeDuration: 0.1, onFinished });
+  public playPitch(startTime = 0.0, timeScale = 1.9, onFinished?: () => void): void {
+    this.playClip('pitch', {
+      loop: false,
+      startTime,
+      timeScale,
+      crossFadeDuration: 0.1,
+      onFinished: () => {
+        this.playIdle(true);
+        if (onFinished) onFinished();
+      },
+    });
   }
 
   public playSwing(startTime = CONFIG.swingStartOffset, timeScale = CONFIG.swingTimeScale, onFinished?: () => void): void {
-    this.playClip('swing', { loop: false, startTime, timeScale, crossFadeDuration: 0.08, onFinished });
+    this.playClip('swing', {
+      loop: false,
+      startTime,
+      timeScale,
+      crossFadeDuration: 0.01,
+      onFinished: () => {
+        this.playIdle(false);
+        if (onFinished) onFinished();
+      },
+    });
   }
 
   public playDefeated(): void {

@@ -21,7 +21,6 @@ export class Characters3DManager {
   private prevStateKind = '';
   private prevBowlerPhase = '';
   private prevIsSwinging = false;
-  private prevOutcome: string | null = null;
   private bowlerRunStartX = 0;
   private ballRetrieval = new BallRetrievalManager();
   private debugClipNames = ['idle', 'swing', 'pitch', 'run', 'slide', 'dive', 'defeated', 'clap', 'cheer'];
@@ -88,21 +87,7 @@ export class Characters3DManager {
     this.characters.set('bowler', bowler);
     this.scene.add(bowler.group);
 
-    // 3. 3 Gully Fielders (all on asphalt, varied colors)
-    const fieldersConfig: [string, number, number, string, number][] = [
-      ['fielder1', l.fielder1.x, l.fielder1.y, cols.fielder1, c3d.fielder1.yaw],
-      ['fielder2', l.fielder2.x, l.fielder2.y, cols.fielder2, c3d.fielder2.yaw],
-      ['fielder3', l.fielder3.x, l.fielder3.y, cols.fielder3, c3d.fielder3.yaw],
-    ];
-
-    fieldersConfig.forEach(([key, x, y, col, yaw], idx) => {
-      const inst = instantiateCharacter(col, { withBat: false, withCap: idx === 1, modelType: 'fielder' });
-      const f = new CharacterController3D(inst, { yaw, scale: 0.85 });
-      f.setPosition(x, y);
-      f.playIdle(true);
-      this.characters.set(key, f);
-      this.scene.add(f.group);
-    });
+    // 3. Fielders disabled for now per user request (focus on 1-on-1 pitch action)
   }
 
   public update(dt: number, state: GameState): void {
@@ -124,6 +109,7 @@ export class Characters3DManager {
     if (state.state === 'BOWLING') {
       if (this.prevStateKind !== 'BOWLING') {
         bowler?.playRun();
+        batter?.playStance();
       }
       if (state.bowlerPhase === 'RUN_UP' && bowler) {
         const t = Math.min(1, state.bowlerTimer / 0.55);
@@ -131,7 +117,7 @@ export class Characters3DManager {
         bowler.setPosition(curX, CONFIG.layout.bowler.y, 0);
       } else if (state.bowlerPhase === 'DELIVERY' && this.prevBowlerPhase !== 'DELIVERY') {
         bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
-        bowler?.playPitch(1.4, 2.0);
+        bowler?.playPitch(0.0, 1.9);
       }
     } else if (this.prevStateKind === 'BOWLING') {
       bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
@@ -143,22 +129,22 @@ export class Characters3DManager {
       batter?.playSwing(CONFIG.swingStartOffset, CONFIG.swingTimeScale);
     }
 
-    // 3. Outcomes
-    if (state.lastResult && state.lastResult.outcome !== this.prevOutcome) {
+    // 3. Outcomes & Celebrations (delayed until shot finishes and reaches RESULT state)
+    if ((state.state === 'RESULT' || state.state === 'GAME_OVER') && state.lastResult && this.prevStateKind !== 'RESULT' && this.prevStateKind !== 'GAME_OVER') {
       const outcome = state.lastResult.outcome;
       if (outcome === 'MISS' || outcome === 'BOWLED') {
         batter?.playDefeated();
       } else if (outcome === 'SIX' || outcome === 'FOUR') {
         batter?.playCheer();
         f1?.playClap(); f2?.playClap(); f3?.playClap();
-      } else if (outcome === 'WINDOW' || outcome === 'CAR_GLASS' || outcome === 'SCOOTER') {
+      } else if (outcome === 'WINDOW' || outcome === 'CAR_GLASS' || outcome === 'SCOOTER' || outcome === 'AC_UNIT' || outcome === 'NEWSPAPER') {
         batter?.playDefeated();
+      } else {
+        batter?.playIdle(false);
       }
       this.ballRetrieval.triggerRetrieval(state, this.characters);
-      this.prevOutcome = outcome;
     }
 
-    if (state.state === 'BOWLING') this.prevOutcome = null;
     this.prevStateKind = state.state;
     this.prevBowlerPhase = state.bowlerPhase;
     this.prevIsSwinging = state.isSwinging;
@@ -200,7 +186,7 @@ export class Characters3DManager {
   }
 
   public cycleDebugCharacter(): void {
-    const list = ['batter', 'bowler', 'fielder1', 'fielder2', 'fielder3'];
+    const list = ['batter', 'bowler'];
     const idx = list.indexOf(this.selectedDebugChar);
     this.selectedDebugChar = list[(idx + 1) % list.length];
     console.log(`[3D DEBUG] Selected character: ${this.selectedDebugChar.toUpperCase()}`);

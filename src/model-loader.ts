@@ -108,6 +108,7 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
         let clip = valid.clone();
         clip.name = name;
         if (name === 'run') clip = removeRootDrift(clip);
+        if (name === 'pitch') clip = THREE.AnimationUtils.subclip(clip, 'pitch', 40, 76, 30);
         animationClips.set(name, clip);
       }
     } catch (err) {
@@ -136,6 +137,11 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
       track.name = `${clean}.${prop}`;
     });
   });
+
+  const swingClip = animationClips.get('swing');
+  if (swingClip) {
+    animationClips.set('battingStance', THREE.AnimationUtils.subclip(swingClip, 'battingStance', 0, 4, 30));
+  }
 
   isLoaded = true;
   isLoading = false;
@@ -218,8 +224,9 @@ export function instantiateCharacter(
     console.warn(`[3D] Character clips: [${clipNames.join(', ')}]. Unmatched tracks (${unmatchedTracks.length}):`, unmatchedTracks);
   }
 
-  // Play idle immediately from creation with random time offset to avoid synchrony
-  const idleAction = actions.get('idle');
+  // Play batting stance for batter or idle for others immediately from creation
+  const defaultAction = options.modelType === 'batter' && actions.has('battingStance') ? 'battingStance' : 'idle';
+  const idleAction = actions.get(defaultAction);
   if (idleAction) {
     idleAction.reset();
     idleAction.setLoop(THREE.LoopRepeat, Infinity);

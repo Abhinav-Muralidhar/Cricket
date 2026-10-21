@@ -19,20 +19,13 @@ export const PALETTE = {
   shadow: 'rgba(0, 0, 0, 0.22)',
 
   // Buildings (Varied Indian lane colors + trims)
-  buildingA: '#F2C14E',       // Aunty's signature warm yellow
-  buildingATrim: '#C98F2B',
-  buildingB: '#4A7FB5',       // Cool blue
-  buildingBTrim: '#2F5580',
-  peach: '#E9A27B',           // Soft peach terracotta
-  peachTrim: '#C87850',
-  mint: '#8FC1A9',            // Mint green
-  mintTrim: '#5A947A',
-  fadedPink: '#D98FA0',       // Dusty pink
-  pinkTrim: '#B46476',
-  buildingCream: '#EBD9B0',   // Sandstone cream
-  creamTrim: '#C6B282',
-  brick: '#A85C4A',           // Exposed red brick
-  brickTrim: '#7B3828',
+  buildingA: '#F2C14E', buildingATrim: '#C98F2B',
+  buildingB: '#4A7FB5', buildingBTrim: '#2F5580',
+  peach: '#E9A27B', peachTrim: '#C87850',
+  mint: '#8FC1A9', mintTrim: '#5A947A',
+  fadedPink: '#D98FA0', pinkTrim: '#B46476',
+  buildingCream: '#EBD9B0', creamTrim: '#C6B282',
+  brick: '#A85C4A', brickTrim: '#7B3828',
 
   // Distant skyline (2 shades lighter than buildings)
   distantSkyline: '#7D98B2',
@@ -90,6 +83,8 @@ export interface GameConfig {
     skyline: { y: number };
     buildingA: { x: number; y: number; width: number; height: number };
     window: { x: number; y: number; width: number; height: number };
+    acUnit: { x: number; y: number; width: number; height: number };
+    newspaper: { x: number; y: number; width: number; height: number };
     car: { x: number; y: number; width: number; height: number };
     scooter: { x: number; y: number; width: number; height: number };
     electricPole: { x: number; y: number; width: number; height: number };
@@ -167,34 +162,34 @@ export const CONFIG: GameConfig = {
   },
   layout: {
     skyline: { y: 155 },
-    // Aunty's building on batter's leg side, visually distinct and hittable
     buildingA: { x: 340, y: 110, width: 290, height: 386 },
-    window: { x: 88, y: 221, width: 143, height: 132 },
-    // Parked hatchback & Activa made larger
-    car: { x: 750, y: 565, width: 285, height: 115 },
-    scooter: { x: 1130, y: 625, width: 140, height: 100 },
-    electricPole: { x: 645, y: 40, width: 16, height: 504 }, // Between building A & B
+    window: { x: 1150, y: 150, width: 88, height: 96 },
+    acUnit: { x: 865, y: 370, width: 44, height: 32 },
+    newspaper: { x: 460, y: 345, width: 48, height: 44 },
+    car: { x: 1380, y: 580, width: 165, height: 50 },
+    scooter: { x: 10, y: 580, width: 140, height: 110 },
+    electricPole: { x: 645, y: 40, width: 16, height: 504 },
     tree: { x: 1400, y: 70 },
     thela: { x: 180, y: 640, width: 120, height: 80 },
     cow: { x: 1340, y: 580, width: 130, height: 95 },
-    wicket: { x: 420, y: 690, width: 28, height: 90 },
-    cricketBag: { x: 360, y: 690 },
+    wicket: { x: 280, y: 690, width: 28, height: 90 },
+    cricketBag: { x: 220, y: 690 },
     strayDog: { x: 730, y: 720 },
-    batter: { x: 480, y: 690 },
-    bowler: { x: 1080, y: 690 },
+    batter: { x: 410, y: 690 },
+    bowler: { x: 1280, y: 690 },
     fielder1: { x: 680, y: 735 },
     fielder2: { x: 860, y: 665 },
     fielder3: { x: 1260, y: 710 },
-    sweetSpot: { x: 520, y: 640 },
+    sweetSpot: { x: 410, y: 606 },
   },
   ball: {
-    radius: 14,
-    baseSpeed: 520,
-    speedIncrementPerBall: 25,
-    maxSpeed: 950,
+    radius: 7,
+    baseSpeed: 640,
+    speedIncrementPerBall: 30,
+    maxSpeed: 1050,
     releaseOffsetX: -20,
     releaseOffsetY: -120,
-    bounceX: 830,
+    bounceX: 750,
     bounceY: 690,
   },
   timing: {
@@ -217,10 +212,10 @@ export const CONFIG: GameConfig = {
   use3DCharacters: true,
   outline3D: true,
   pitchReleaseTime: 0.35,
-  swingStartOffset: 0.9,
-  swingTimeScale: 1.8,
+  swingStartOffset: 0.85,
+  swingTimeScale: 2.2,
   batOffset: { x: 0, y: 0, z: 0 },
-  batRotation: { x: 0, y: 0, z: 0 },
+  batRotation: { x: -0.2, y: 1.2, z: 0.0 },
   batScale: { x: 1, y: 1, z: 1 },
   characters3D: {
     batter: { yaw: Math.PI / 2, scale: 1.0, isLeftHanded: false },

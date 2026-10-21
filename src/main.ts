@@ -61,7 +61,7 @@ function initGame(): void {
     onPreviewToggle: () => cycleBatterPreviewClip(state),
     onCycleTarget: () => {
       if (!state.debugMode) return;
-      const targets: HitTargetKey[] = ['window', 'car', 'scooter'];
+      const targets: HitTargetKey[] = ['window', 'acUnit', 'newspaper', 'car', 'scooter'];
       const idx = targets.indexOf(state.selectedHitTarget);
       state.selectedHitTarget = targets[(idx + 1) % targets.length];
       const r = CONFIG.layout[state.selectedHitTarget];

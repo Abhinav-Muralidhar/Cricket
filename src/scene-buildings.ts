@@ -94,8 +94,11 @@ export function drawBuildingRow(ctx: CanvasRenderingContext2D): void {
   // B3: Aunty's Signature Building (x=340, w=290) - visually distinct on leg side
   r(ctx, l.buildingA.x, l.buildingA.y, l.buildingA.width, l.buildingA.height, PALETTE.buildingA);
   r(ctx, l.buildingA.x - 6, l.buildingA.y, l.buildingA.width + 12, 16, PALETTE.buildingATrim);
-  drawDish(ctx, l.buildingA.x + 35, l.buildingA.y - 10);
-  drawAuntyWindow(ctx, l.window.x, l.window.y, l.window.width, l.window.height);
+  // Windows on yellow building (harmless, nothing happens here)
+  r(ctx, l.buildingA.x + 40, l.buildingA.y + 70, 52, 60, PALETTE.buildingATrim);
+  r(ctx, l.buildingA.x + 44, l.buildingA.y + 74, 44, 52, PALETTE.asphaltDark);
+  r(ctx, l.buildingA.x + 180, l.buildingA.y + 70, 52, 60, PALETTE.buildingATrim);
+  r(ctx, l.buildingA.x + 184, l.buildingA.y + 74, 44, 52, PALETTE.asphaltDark);
   // Wide Balcony with grill & hanging clothes
   const balY = 380;
   r(ctx, l.buildingA.x + 20, balY, l.buildingA.width - 40, 52, PALETTE.buildingATrim);

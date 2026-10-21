@@ -1,108 +1,141 @@
 /**
- * render.ts - Canvas rendering, camera scaling (1600x800 world to screen), and scene composition.
+ * render.ts - Canvas rendering, scene composition, wickets, and ball drawing.
+ * Camera viewport & dynamic effects are in camera.ts and effects.ts respectively.
  */
 
 import { CONFIG, PALETTE } from './config.ts';
 import { drawBackground } from './background.ts';
 import { drawCharacter } from './characters.ts';
+import { drawDynamicEffects } from './effects.ts';
 import { drawHUD, drawWorldDebug, drawRotatePhoneOverlay } from './hud.ts';
 import type { GameState } from './types.ts';
 
-export interface CameraViewport {
-  scale: number;
-  dpr: number;
-  cssWidth: number;
-  cssHeight: number;
-  worldLeft: number;
-  worldTop: number;
-  visibleWorldWidth: number;
-  visibleWorldHeight: number;
-  isPortraitPhone: boolean;
-}
+// Re-export camera so existing imports from './render.ts' still work
+export { computeCamera } from './camera.ts';
+export type { CameraViewport } from './camera.ts';
+import type { CameraViewport } from './camera.ts';
 
-export function computeCamera(cssWidth: number, cssHeight: number, dpr: number): CameraViewport {
-  const worldH = CONFIG.world.height;
-  const isPortraitPhone = cssHeight > cssWidth;
-
-  const mustShowLeft = Math.max(0, CONFIG.layout.window.x - 20);
-  const mustShowRight = CONFIG.layout.bowler.x + 80;
-  const minRequiredWidth = mustShowRight - mustShowLeft;
-
-  let scale = cssHeight / worldH;
-  let visibleWorldWidth = cssWidth / scale;
-  if (visibleWorldWidth < minRequiredWidth) {
-    scale = cssWidth / minRequiredWidth;
-    visibleWorldWidth = minRequiredWidth;
-  }
-  const visibleWorldHeight = worldH;
-  const worldTop = 0;
-
-  // Clamp horizontal crop so window rect and pitch never leave the screen
-  const minWorldLeft = mustShowRight - visibleWorldWidth;
-  const maxWorldLeft = mustShowLeft;
-  const desiredWorldLeft = (mustShowLeft + mustShowRight - visibleWorldWidth) / 2;
-  const worldLeft = Math.max(minWorldLeft, Math.min(maxWorldLeft, desiredWorldLeft));
-
-  return { scale, dpr, cssWidth, cssHeight, worldLeft, worldTop, visibleWorldWidth, visibleWorldHeight, isPortraitPhone };
-}
-
-function drawWickets(ctx: CanvasRenderingContext2D): void {
+function drawWickets(ctx: CanvasRenderingContext2D, state: GameState): void {
   const w = CONFIG.layout.wicket;
+  const isBowled = state.lastResult?.outcome === 'BOWLED' && (state.state === 'RESULT' || state.state === 'GAME_OVER');
+  const t = isBowled ? Math.min(1.2, state.resultTimer) : 0;
   ctx.save();
-  ctx.fillStyle = '#8B5E3C';
-  ctx.fillRect(w.x, w.y - 78, 5, 78);
-  ctx.fillRect(w.x + 10, w.y - 78, 5, 78);
-  ctx.fillRect(w.x + 20, w.y - 78, 5, 78);
-  ctx.fillRect(w.x - 2, w.y - 82, 28, 4);
 
-  ctx.strokeStyle = '#5C3814';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(w.x, w.y - 78, 5, 78);
-  ctx.strokeRect(w.x + 10, w.y - 78, 5, 78);
-  ctx.strokeRect(w.x + 20, w.y - 78, 5, 78);
-  ctx.strokeRect(w.x - 2, w.y - 82, 28, 4);
+  // Ground shadow under wickets
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.beginPath();
+  ctx.ellipse(w.x + 3, w.y + 1, 10, 4, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  const stumps = [
+    { x: w.x + 6, y: w.y - 6, col: '#784D2B', rot: -Math.min(0.55, t * 1.5), dx: -t * 15, dy: t * 5 },
+    { x: w.x + 3, y: w.y - 3, col: '#8B5E3C', rot: -Math.min(1.10, t * 2.8), dx: -t * 35, dy: t * 12 },
+    { x: w.x,     y: w.y,     col: '#9E6D44', rot: -Math.min(0.75, t * 2.0), dx: -t * 22, dy: t * 8 },
+  ];
+
+  for (const s of stumps) {
+    ctx.save();
+    ctx.translate(s.x + s.dx, s.y + s.dy);
+    if (s.rot !== 0) ctx.rotate(s.rot);
+    ctx.fillStyle = s.col;
+    ctx.fillRect(0, -74, 5, 74);
+    ctx.fillStyle = 'rgba(255, 235, 205, 0.25)';
+    ctx.fillRect(1, -74, 1.2, 74);
+    ctx.strokeStyle = '#382210';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(0, -74, 5, 74);
+    ctx.restore();
+  }
+
+  // Wooden bails resting or flying off when bowled
+  ctx.fillStyle = '#C89260';
+  ctx.strokeStyle = '#382210';
+  ctx.lineWidth = 1;
+  if (!isBowled) {
+    ctx.fillRect(w.x - 1, w.y - 78, 13, 3.5);
+    ctx.strokeRect(w.x - 1, w.y - 78, 13, 3.5);
+  } else {
+    const bails = [
+      { x: w.x - t * 75, y: (w.y - 78) - (130 * t - 160 * t * t), rot: t * 8 },
+      { x: w.x + 5 - t * 50, y: (w.y - 78) - (95 * t - 140 * t * t), rot: -t * 9 },
+    ];
+    for (const b of bails) {
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+      ctx.fillRect(-3.5, -1.7, 7, 3.5); ctx.strokeRect(-3.5, -1.7, 7, 3.5);
+      ctx.restore();
+    }
+  }
+
   ctx.restore();
-}
-
-function drawDynamicEffects(ctx: CanvasRenderingContext2D, state: GameState): void {
-  const res = state.lastResult;
-  if (!res) return;
-  if (res.isWindowBroken) {
-    const w = CONFIG.layout.window;
-    ctx.save();
-    ctx.strokeStyle = PALETTE.ball;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(w.x + 15, w.y + 15); ctx.lineTo(w.x + w.width / 2, w.y + w.height / 2); ctx.lineTo(w.x + w.width - 20, w.y + 25);
-    ctx.stroke();
-    ctx.restore();
-  }
-  if (res.isCarGlassBroken) {
-    const c = CONFIG.layout.car;
-    ctx.save();
-    ctx.strokeStyle = PALETTE.ball;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(c.x + 55, c.y + 8); ctx.lineTo(c.x + 75, c.y + 24);
-    ctx.stroke();
-    ctx.restore();
-  }
 }
 
 function drawBall(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { ball } = state;
-  if (!ball.active && state.state !== 'HIT' && state.state !== 'BOWLING') return;
+  if (!state.isBallReleased && state.state !== 'HIT' && state.state !== 'RESULT') return;
+
   ctx.save();
+
+  // 1. Dynamic ground drop shadow on asphalt (removed when stopped)
+  const isMoving = state.state === 'BOWLING' ||
+    (state.state === 'HIT' && (ball.arcProgress || 0) < 1.0) ||
+    (state.state === 'RESULT' && (Math.abs(ball.vx || 0) > 5 || Math.abs(ball.vy || 0) > 5));
+
+  if (isMoving) {
+    const asphaltY = 690;
+    const heightAboveGround = Math.max(0, asphaltY - ball.y);
+    const shadowScale = Math.max(0.4, 1.0 - heightAboveGround * 0.0028);
+    const shadowAlpha = Math.max(0.08, 0.38 - heightAboveGround * 0.0016);
+    ctx.beginPath();
+    ctx.ellipse(ball.x, asphaltY, ball.radius * 1.8 * shadowScale, ball.radius * 0.6 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha.toFixed(3)})`;
+    ctx.fill();
+  }
+
+  // 2. High-speed projectile motion trail
+  if (ball.trail && ball.trail.length > 1) {
+    for (let i = 0; i < ball.trail.length - 1; i++) {
+      const p1 = ball.trail[i];
+      const p2 = ball.trail[i + 1];
+      const progress = (i + 1) / ball.trail.length;
+      const alpha = progress * 0.45;
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.strokeStyle = `rgba(214, 40, 40, ${alpha.toFixed(3)})`;
+      ctx.lineWidth = ball.radius * 2 * progress;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.strokeStyle = `rgba(255, 230, 190, ${(alpha * 0.7).toFixed(3)})`;
+      ctx.lineWidth = ball.radius * 0.7 * progress;
+      ctx.stroke();
+    }
+  }
+
+  // 3. Crisp cricket ball sphere
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
   ctx.fillStyle = PALETTE.ball;
   ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = PALETTE.roadLines;
+
+  // White stitched seam arc
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, -0.7, 0.7);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 1.3;
   ctx.stroke();
-  ctx.lineWidth = 1.5;
+
+  // Ink outline
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
   ctx.strokeStyle = PALETTE.outlines;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
+
   ctx.restore();
 }
 
@@ -134,11 +167,8 @@ export function renderGame(
     characters3D.render(cam);
     if (!characters3D.isReady) {
       hudCtx.save();
-      hudCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-      hudCtx.fillRect(cam.cssWidth * cam.dpr / 2 - 120, 20, 240, 36);
-      hudCtx.fillStyle = '#FFD9A0';
-      hudCtx.font = 'bold 14px system-ui, sans-serif';
-      hudCtx.textAlign = 'center';
+      hudCtx.fillStyle = 'rgba(0, 0, 0, 0.4)'; hudCtx.fillRect(cam.cssWidth * cam.dpr / 2 - 120, 20, 240, 36);
+      hudCtx.fillStyle = '#FFD9A0'; hudCtx.font = 'bold 14px system-ui, sans-serif'; hudCtx.textAlign = 'center';
       hudCtx.fillText('Loading 3D Characters...', cam.cssWidth * cam.dpr / 2, 44);
       hudCtx.restore();
     }
@@ -147,16 +177,8 @@ export function renderGame(
   // 3. Layer 3: 2D dynamic effects, wickets, ball, and optional 2D fallback rigs
   hudCtx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
   drawDynamicEffects(hudCtx, state);
-
-  if (!CONFIG.use3DCharacters) {
-    drawCharacter(hudCtx, state.fielder3Rig);
-    drawCharacter(hudCtx, state.fielder2Rig);
-    drawCharacter(hudCtx, state.fielder1Rig);
-    drawCharacter(hudCtx, state.batterRig, state.squashX, state.squashY);
-    drawCharacter(hudCtx, state.bowlerRig);
-  }
-
-  drawWickets(hudCtx);
+  if (!CONFIG.use3DCharacters) [state.fielder3Rig, state.fielder2Rig, state.fielder1Rig, state.batterRig, state.bowlerRig].forEach((r) => drawCharacter(hudCtx, r));
+  drawWickets(hudCtx, state);
   drawBall(hudCtx, state);
   drawWorldDebug(hudCtx, state);
 

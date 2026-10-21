@@ -163,7 +163,6 @@ export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState):
   if (!state.debugMode) return;
   const sweetX = CONFIG.layout.sweetSpot.x;
   const groundY = CONFIG.street.groundY;
-  const t = CONFIG.timing;
   const zoneY = groundY + 14;
 
   ctx.save();
@@ -171,6 +170,8 @@ export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState):
   // Outlined Hit Targets with coordinates and selection highlight
   const targets = [
     { key: 'window' as const, name: 'WINDOW', rect: CONFIG.layout.window },
+    { key: 'acUnit' as const, name: 'AC UNIT', rect: CONFIG.layout.acUnit },
+    { key: 'newspaper' as const, name: 'NEWSPAPER', rect: CONFIG.layout.newspaper },
     { key: 'car' as const, name: 'CAR', rect: CONFIG.layout.car },
     { key: 'scooter' as const, name: 'SCOOTER', rect: CONFIG.layout.scooter },
   ];
@@ -215,13 +216,14 @@ export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState):
     ctx.fillText(lbl, sx + w / 2 - 8, zoneY + 15);
   };
 
-  drawZone(t.windowMinOffset, t.windowMaxOffset, 'rgba(214, 40, 40, 0.85)', 'WIN');
-  drawZone(t.fourEarlyTolerance, t.singleEarlyTolerance, 'rgba(234, 179, 8, 0.8)', '1');
-  drawZone(t.sixTolerance, t.fourEarlyTolerance, 'rgba(6, 182, 212, 0.8)', '4');
-  drawZone(-t.sixTolerance, t.sixTolerance, 'rgba(16, 185, 129, 0.9)', '6');
-  drawZone(-t.sixTolerance, -t.fourLateTolerance, 'rgba(6, 182, 212, 0.8)', '4');
-  drawZone(-t.fourLateTolerance, -t.singleLateTolerance, 'rgba(234, 179, 8, 0.8)', '1');
-  drawZone(-t.scooterMinOffset, -t.scooterMaxOffset, 'rgba(249, 115, 22, 0.85)', 'CAR');
+  drawZone(180, 240, 'rgba(214, 40, 40, 0.85)', 'WIN');
+  drawZone(130, 180, 'rgba(56, 189, 248, 0.85)', 'AC');
+  drawZone(75, 130, 'rgba(250, 204, 21, 0.85)', 'NEWS');
+  drawZone(22, 75, 'rgba(6, 182, 212, 0.8)', '4');
+  drawZone(-22, 22, 'rgba(16, 185, 129, 0.9)', '6');
+  drawZone(-22, -38, 'rgba(6, 182, 212, 0.8)', '4');
+  drawZone(-38, -50, 'rgba(234, 179, 8, 0.8)', '1');
+  drawZone(-50, -98, 'rgba(249, 115, 22, 0.85)', 'CAR');
 
   if (state.ball.active || state.state === 'BOWLING') {
     ctx.strokeStyle = '#facc15';

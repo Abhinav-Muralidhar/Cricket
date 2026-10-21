@@ -63,6 +63,7 @@ export function createInitialState(): GameState {
       active: false,
       bounced: false,
       arcProgress: 0,
+      trail: [],
     },
     lastResult: null,
     batterRig: createBatterRig(l.batter.x, l.batter.y),

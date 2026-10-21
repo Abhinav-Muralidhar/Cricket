@@ -11,51 +11,32 @@ export { createRig, createBatterRig, createBowlerRig, createInitialState } from 
 
 export function startNewDelivery(state: GameState): void {
   state.ballCount++;
-  state.currentBallSpeed = Math.min(
-    CONFIG.ball.maxSpeed,
-    CONFIG.ball.baseSpeed + (state.ballCount - 1) * CONFIG.ball.speedIncrementPerBall
-  );
-
+  state.currentBallSpeed = Math.min(CONFIG.ball.maxSpeed, CONFIG.ball.baseSpeed + (state.ballCount - 1) * CONFIG.ball.speedIncrementPerBall);
   state.bowlerRig.x = CONFIG.layout.bowler.x + 25;
-  state.bowlerPhase = 'RUN_UP';
-  state.bowlerTimer = 0;
-  state.isBallReleased = false;
-  state.isWaitingForBall = false;
-
-  state.batterRig.expression = 'neutral';
-  state.bowlerRig.expression = 'neutral';
+  state.bowlerPhase = 'RUN_UP'; state.bowlerTimer = 0;
+  state.isBallReleased = false; state.isWaitingForBall = false;
+  state.batterRig.expression = 'neutral'; state.bowlerRig.expression = 'neutral';
   [state.fielder1Rig, state.fielder2Rig, state.fielder3Rig].forEach((r) => (r.expression = 'neutral'));
 
   state.ball = {
     x: CONFIG.layout.bowler.x + CONFIG.ball.releaseOffsetX,
     y: CONFIG.layout.bowler.y + CONFIG.ball.releaseOffsetY,
-    vx: -state.currentBallSpeed,
-    vy: 0,
-    radius: CONFIG.ball.radius,
-    active: false,
-    bounced: false,
-    arcProgress: 0,
+    vx: -state.currentBallSpeed, vy: 0, radius: CONFIG.ball.radius,
+    active: false, bounced: false, arcProgress: 0,
     startPos: { x: CONFIG.layout.bowler.x + CONFIG.ball.releaseOffsetX, y: CONFIG.layout.bowler.y + CONFIG.ball.releaseOffsetY },
+    trail: [],
   };
 
-  state.isSwinging = false;
-  state.hasSwungThisBall = false;
-  state.resultTimer = 0;
+  state.isSwinging = false; state.hasSwungThisBall = false; state.resultTimer = 0;
   state.state = 'BOWLING';
-
   state.bowlerAnimator.play(BOWLER_CLIPS.runUp, true);
   state.batterAnimator.play(BATTER_CLIPS.idle);
-  state.fielder1Animator.play(FIELDER_CLIPS.idle);
-  state.fielder2Animator.play(FIELDER_CLIPS.idle);
-  state.fielder3Animator.play(FIELDER_CLIPS.idle);
+  [state.fielder1Animator, state.fielder2Animator, state.fielder3Animator].forEach((a) => a.play(FIELDER_CLIPS.idle));
 }
 
 export function resetGame(state: GameState): void {
-  state.score = 0;
-  state.lives = CONFIG.gameplay.initialLives;
-  state.ballCount = 0;
-  state.lastResult = null;
-  state.previewClipName = null;
+  state.score = 0; state.lives = CONFIG.gameplay.initialLives; state.ballCount = 0;
+  state.lastResult = null; state.previewClipName = null;
   startNewDelivery(state);
 }
 
@@ -66,11 +47,11 @@ export function handlePlayerSwing(state: GameState): void {
     return;
   }
   if (state.state === 'RESULT') {
-    if (state.lives <= 0 || (state.lastResult && state.lastResult.isWindowBroken)) state.state = 'GAME_OVER';
+    if (state.lives <= 0) state.state = 'GAME_OVER';
     else startNewDelivery(state);
     return;
   }
-  if (state.state !== 'BOWLING' || state.hasSwungThisBall) return;
+  if (state.state !== 'BOWLING' || !state.isBallReleased || state.hasSwungThisBall) return;
 
   state.hasSwungThisBall = true;
   state.isSwinging = true;
@@ -83,7 +64,7 @@ export function handlePlayerSwing(state: GameState): void {
     state.lastResult = result;
     state.score += result.runsScored;
     state.lives -= result.livesLost;
-    setupHitTrajectory(state.ball, result.outcome);
+    setupHitTrajectory(state.ball, result.outcome, result.timingRating);
     state.state = 'HIT';
     state.squashX = 1.18; state.squashY = 0.84;
 
@@ -94,16 +75,13 @@ export function handlePlayerSwing(state: GameState): void {
       state.batterRig.expression = 'smile';
       allFielders.forEach((r) => (r.expression = 'sad'));
       allFieldAnim.forEach((a) => a.play(FIELDER_CLIPS.handsOnHead, true));
-    } else if (result.outcome === 'WINDOW' || result.outcome === 'CAR_GLASS' || result.outcome === 'SCOOTER') {
-      state.batterRig.expression = 'shout';
-      state.bowlerRig.expression = 'shout';
-      allFielders.forEach((r) => (r.expression = 'shout'));
-      allFieldAnim.forEach((a) => a.play(FIELDER_CLIPS.handsOnHead, true));
     } else if (result.outcome === 'SINGLE') {
       state.batterRig.expression = 'neutral';
-      state.fielder1Animator.play(FIELDER_CLIPS.run, true);
-      state.fielder2Animator.play(FIELDER_CLIPS.dive, true);
-      state.fielder3Animator.play(FIELDER_CLIPS.run, true);
+      allFieldAnim.forEach((a) => a.play(FIELDER_CLIPS.run, true));
+    } else {
+      state.batterRig.expression = 'shout'; state.bowlerRig.expression = 'shout';
+      allFielders.forEach((r) => (r.expression = 'shout'));
+      allFieldAnim.forEach((a) => a.play(FIELDER_CLIPS.handsOnHead, true));
     }
   } else {
     state.lastResult = result;
@@ -122,16 +100,9 @@ export function updateGame(state: GameState, dt: number): void {
   if (state.isPortrait) return;
   const delta = Math.min(dt, 0.05);
 
-  state.batterAnimator.update(delta);
-  state.bowlerAnimator.update(delta);
-  state.fielder1Animator.update(delta);
-  state.fielder2Animator.update(delta);
-  state.fielder3Animator.update(delta);
-
-  state.batterAnimator.applyToRig(state.batterRig);
-  state.bowlerAnimator.applyToRig(state.bowlerRig);
-  state.fielder1Animator.applyToRig(state.fielder1Rig);
-  state.fielder2Animator.applyToRig(state.fielder2Rig);
+  [state.batterAnimator, state.bowlerAnimator, state.fielder1Animator, state.fielder2Animator, state.fielder3Animator].forEach((a) => a.update(delta));
+  state.batterAnimator.applyToRig(state.batterRig); state.bowlerAnimator.applyToRig(state.bowlerRig);
+  state.fielder1Animator.applyToRig(state.fielder1Rig); state.fielder2Animator.applyToRig(state.fielder2Rig);
   state.fielder3Animator.applyToRig(state.fielder3Rig);
 
   // Smooth squash/stretch recovery
@@ -170,6 +141,10 @@ export function updateGame(state: GameState, dt: number): void {
 
       if (state.isBallReleased) {
         state.ball.x += state.ball.vx * delta;
+        if (!state.ball.trail) state.ball.trail = [];
+        state.ball.trail.push({ x: state.ball.x, y: state.ball.y });
+        if (state.ball.trail.length > 8) state.ball.trail.shift();
+
         const bounceX = CONFIG.ball.bounceX;
         const releaseX = state.ball.startPos?.x ?? (CONFIG.layout.bowler.x + CONFIG.ball.releaseOffsetX);
         const releaseY = state.ball.startPos?.y ?? (CONFIG.layout.bowler.y + CONFIG.ball.releaseOffsetY);
@@ -191,19 +166,14 @@ export function updateGame(state: GameState, dt: number): void {
         if (state.ball.x <= CONFIG.layout.wicket.x + CONFIG.layout.wicket.width) {
           state.lives = Math.max(0, state.lives - 1);
           state.lastResult = {
-            outcome: 'BOWLED',
-            timingRating: state.hasSwungThisBall ? 'TOO_LATE' : 'NONE',
+            outcome: 'BOWLED', timingRating: state.hasSwungThisBall ? 'TOO_LATE' : 'NONE',
             timingOffsetPx: state.ball.x - CONFIG.layout.sweetSpot.x,
             timingOffsetMs: Math.round(((state.ball.x - CONFIG.layout.sweetSpot.x) / state.currentBallSpeed) * 1000),
-            description: 'BOWLED!',
-            runsScored: 0,
-            livesLost: 1,
-            isWindowBroken: false,
-            isScooterHit: false,
+            description: 'BOWLED! BALL LOST (-1)', runsScored: 0, livesLost: 1, isWindowBroken: false, isScooterHit: false,
           };
           state.ball.active = false;
-          state.batterRig.expression = 'wince';
-          state.bowlerRig.expression = 'smile';
+          state.ball.vx = -30; state.ball.vy = -60;
+          state.batterRig.expression = 'wince'; state.bowlerRig.expression = 'smile';
           state.squashX = 0.92; state.squashY = 1.12;
           state.batterAnimator.play(BATTER_CLIPS.bowledReaction, true);
           state.state = 'RESULT';
@@ -217,8 +187,24 @@ export function updateGame(state: GameState, dt: number): void {
         state.ball.arcProgress = (state.ball.arcProgress || 0) + delta / CONFIG.gameplay.hitFlightDurationSec;
         const t = Math.min(1, state.ball.arcProgress);
         state.ball.x = state.ball.startPos.x + t * (state.ball.target.x - state.ball.startPos.x);
-        const peakHeight = state.lastResult?.outcome === 'SIX' ? 320 : 60;
-        state.ball.y = state.ball.startPos.y + t * (state.ball.target.y - state.ball.startPos.y) - 4 * peakHeight * t * (1 - t);
+        const isGround = state.lastResult?.outcome === 'FOUR' || state.lastResult?.outcome === 'SINGLE';
+        if (isGround) {
+          const groundY = CONFIG.street.groundY - state.ball.radius;
+          if (t < 0.12) {
+            state.ball.y = state.ball.startPos.y + (t / 0.12) * (groundY - state.ball.startPos.y);
+          } else {
+            const p = (t - 0.12) / 0.88;
+            const h = state.lastResult?.outcome === 'FOUR' ? 70 : 45;
+            const freq = state.lastResult?.outcome === 'FOUR' ? 3.5 : 2.5;
+            state.ball.y = groundY - h * Math.exp(-2.8 * p) * Math.abs(Math.sin(p * Math.PI * freq));
+          }
+        } else {
+          const peak = state.lastResult?.outcome === 'SIX' ? 340 : 120;
+          state.ball.y = state.ball.startPos.y + t * (state.ball.target.y - state.ball.startPos.y) - 4 * peak * t * (1 - t);
+        }
+        if (!state.ball.trail) state.ball.trail = [];
+        state.ball.trail.push({ x: state.ball.x, y: state.ball.y });
+        if (state.ball.trail.length > 8) state.ball.trail.shift();
         if (t >= 1) state.state = 'RESULT';
       }
       break;
@@ -226,17 +212,28 @@ export function updateGame(state: GameState, dt: number): void {
 
     case 'RESULT': {
       state.resultTimer += delta;
-      const pauseDuration = CONFIG.gameplay.resultPauseDurationSec;
-      const waiting = state.isWaitingForBall && state.resultTimer < pauseDuration + 1.5;
-      if (state.resultTimer >= pauseDuration && !waiting) {
-        if (state.lives <= 0 || (state.lastResult && state.lastResult.isWindowBroken)) state.state = 'GAME_OVER';
+      if (state.lastResult?.outcome === 'BOWLED') {
+        const groundY = CONFIG.street.groundY - state.ball.radius;
+        if (state.ball.y < groundY || Math.abs(state.ball.vy) > 10) {
+          state.ball.vy = (state.ball.vy || 0) + 980 * delta;
+          state.ball.y = Math.min(groundY, state.ball.y + state.ball.vy * delta);
+          state.ball.x += (state.ball.vx || 0) * delta;
+          if (state.ball.y >= groundY) {
+            state.ball.vy = -state.ball.vy * 0.3;
+            if (Math.abs(state.ball.vy) < 25) state.ball.vy = 0;
+            state.ball.vx *= 0.8;
+          }
+        }
+      }
+      const pause = CONFIG.gameplay.resultPauseDurationSec;
+      if (state.resultTimer >= pause && (!state.isWaitingForBall || state.resultTimer >= pause + 1.5)) {
+        if (state.lives <= 0) state.state = 'GAME_OVER';
         else startNewDelivery(state);
       }
       break;
     }
 
     case 'TITLE':
-    case 'GAME_OVER':
-      break;
+    case 'GAME_OVER': break;
   }
 }

@@ -18,6 +18,8 @@ export type OutcomeType =
   | 'WINDOW'
   | 'SCOOTER'
   | 'CAR_GLASS'
+  | 'AC_UNIT'
+  | 'NEWSPAPER'
   | 'MISS'
   | 'BOWLED';
 
@@ -33,7 +35,7 @@ export type TimingRating =
 
 export type FaceExpression = 'neutral' | 'smile' | 'shout' | 'sad' | 'wince';
 export type CharacterVariant = 'batter' | 'bowler' | 'gully' | 'schoolKid' | 'uncle';
-export type HitTargetKey = 'window' | 'car' | 'scooter';
+export type HitTargetKey = 'window' | 'car' | 'scooter' | 'acUnit' | 'newspaper';
 
 export interface RigPart {
   pivotX: number;
@@ -76,6 +78,7 @@ export interface BallState {
   target?: Vector2D;
   arcProgress?: number;
   startPos?: Vector2D;
+  trail?: Vector2D[];
 }
 
 export interface DeliveryResult {
@@ -89,6 +92,8 @@ export interface DeliveryResult {
   isWindowBroken: boolean;
   isScooterHit: boolean;
   isCarGlassBroken?: boolean;
+  isAcHit?: boolean;
+  isNewspaperHit?: boolean;
 }
 
 export interface GameState {

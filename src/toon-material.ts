@@ -43,41 +43,35 @@ export function createToonMaterial(color: string | number, map?: THREE.Texture |
   const anyMat = mat as unknown as Record<string, unknown>;
   anyMat.envMap = null;
   anyMat.metalness = 0;
+  anyMat.roughness = 1.0;
 
   mat.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <dithering_fragment>',
       `
       #include <dithering_fragment>
-      // Golden-hour 3-band toon lighting (no specular)
+      // Hand-drawn flat cel shading (matte finish, no glossiness)
       vec3 geomNormal = normalize(vNormal);
-      vec3 viewDir = normalize(vViewPosition);
-
-      // Fixed light direction (-0.7, 0.4, 0.6)
       vec3 fixedLightDir = normalize(vec3(-0.7, 0.4, 0.6));
       float NdotL = dot(geomNormal, fixedLightDir);
 
-      // 3-band toon ramp with dark-warm shadow band (#2A1F2D tint), mid band, lit band
       vec3 shadowTint = vec3(42.0 / 255.0, 31.0 / 255.0, 45.0 / 255.0); // #2A1F2D
       vec3 baseCol = gl_FragColor.rgb;
 
-      vec3 shadowBand = mix(baseCol * 0.35, shadowTint * 1.8, 0.55);
-      vec3 midBand = baseCol * 0.80;
-      vec3 litBand = baseCol * 1.25;
+      // Soft, clean cel shadow and flat matte lit band
+      vec3 shadowBand = mix(baseCol * 0.72, shadowTint, 0.20);
+      vec3 litBand = baseCol; // Pure matte, no shiny/glossy highlight multiplier
 
-      float stepMid = smoothstep(-0.04, 0.02, NdotL);
-      float stepLit = smoothstep(0.38, 0.44, NdotL);
+      float stepLit = smoothstep(-0.02, 0.06, NdotL);
+      vec3 toonShading = mix(shadowBand, litBand, stepLit);
 
-      vec3 toonShading = mix(shadowBand, midBand, stepMid);
-      toonShading = mix(toonShading, litBand, stepLit);
-
-      // Warm golden rim light (#FFD9A0), fresnel power ~2.0, intensity 1.2
-      // Strongest on the left (sunward) edge using normal dot fixed light dir
+      // Subtle warm edge accent (softened from 1.2 to 0.25)
+      vec3 viewDir = normalize(vViewPosition);
       float NdotV = clamp(1.0 - max(dot(geomNormal, viewDir), 0.0), 0.0, 1.0);
-      float fresnel = pow(NdotV, 2.0);
+      float fresnel = pow(NdotV, 3.0);
       float sunEdge = max(dot(geomNormal, fixedLightDir), 0.0);
-      float rim = fresnel * sunEdge * 1.2;
-      vec3 rimCol = vec3(1.0, 0.851, 0.627); // #FFD9A0
+      float rim = fresnel * sunEdge * 0.25;
+      vec3 rimCol = vec3(1.0, 0.92, 0.82);
 
       gl_FragColor.rgb = toonShading + rimCol * rim;
       `
@@ -183,20 +177,42 @@ export function createCapProp(color: string | number): THREE.Group {
 
 export function createBatProp(): THREE.Group {
   const batGroup = new THREE.Group();
-  const bladeMat = createToonMaterial('#F5E9CF'); // Willow wood
-  const handleMat = createToonMaterial('#D62828'); // Red rubber grip
+  const bladeMat = createToonMaterial('#F3E4C8'); // Prime English Willow
+  const handleMat = createToonMaterial('#222228'); // Sleek rubber grip
+  const stickerMat = createToonMaterial('#D62828'); // Red brand chevron
 
-  // Handle (grip in hand at y=0, extending backwards along -Y)
-  const handleGeo = new THREE.CylinderGeometry(1.9, 1.9, 16, 12);
+  // Handle (slender rubber grip cylinder passing through hands)
+  const handleGeo = new THREE.CylinderGeometry(1.85, 1.85, 25, 14);
   const handle = new THREE.Mesh(handleGeo, handleMat);
-  handle.position.set(0, -5, 0);
+  handle.rotation.x = Math.PI / 2;
+  handle.position.set(0, 0, -5.5);
   batGroup.add(handle);
 
-  // Blade extending forward along +Y (forearm direction)
-  const bladeGeo = new THREE.BoxGeometry(9.0, 44, 4.0);
+  // Top knob of handle
+  const knobGeo = new THREE.SphereGeometry(2.1, 10, 8);
+  const knob = new THREE.Mesh(knobGeo, handleMat);
+  knob.position.set(0, 0, -18);
+  batGroup.add(knob);
+
+  // Bat shoulders (smooth taper from handle to blade)
+  const shoulderGeo = new THREE.BoxGeometry(10.5, 4.6, 8.0);
+  const shoulder = new THREE.Mesh(shoulderGeo, bladeMat);
+  shoulder.position.set(0, 0, 8);
+  batGroup.add(shoulder);
+
+  // Red manufacturer brand stripe across shoulders
+  const stickerGeo = new THREE.BoxGeometry(11.0, 4.8, 3.5);
+  const sticker = new THREE.Mesh(stickerGeo, stickerMat);
+  sticker.position.set(0, 0, 8.5);
+  batGroup.add(sticker);
+
+  // Authentic willow blade with front face and edges
+  const bladeGeo = new THREE.BoxGeometry(13.5, 4.8, 52.0);
   const blade = new THREE.Mesh(bladeGeo, bladeMat);
-  blade.position.set(0, 25, 0);
+  blade.position.set(0, 0, 36);
   batGroup.add(blade);
 
   return batGroup;
 }
+
+
