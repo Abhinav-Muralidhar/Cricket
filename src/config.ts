@@ -163,9 +163,9 @@ export const CONFIG: GameConfig = {
   layout: {
     skyline: { y: 155 },
     buildingA: { x: 340, y: 110, width: 290, height: 386 },
-    window: { x: 1150, y: 150, width: 88, height: 96 },
-    acUnit: { x: 865, y: 370, width: 44, height: 32 },
-    newspaper: { x: 460, y: 345, width: 48, height: 44 },
+    window: { x: 1085, y: 105, width: 100, height: 110 },
+    acUnit: { x: 840, y: 230, width: 55, height: 45 },
+    newspaper: { x: 665, y: 315, width: 55, height: 55 },
     car: { x: 1380, y: 580, width: 165, height: 50 },
     scooter: { x: 10, y: 580, width: 140, height: 110 },
     electricPole: { x: 645, y: 40, width: 16, height: 504 },

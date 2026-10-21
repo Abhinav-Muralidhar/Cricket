@@ -5,21 +5,11 @@
 import { CONFIG, PALETTE } from './config.ts';
 import type { GameState } from './types.ts';
 
-/** Renders hazard impact effects: flashes, sparks, cracks, and car indicators */
+/** Renders hazard impact effects: sparks, cracks, and car indicators */
 export function drawDynamicEffects(ctx: CanvasRenderingContext2D, state: GameState): void {
   const res = state.lastResult;
   if (!res) return;
   const t = state.resultTimer;
-
-  // --- Impact flash on any hazard (first 0.15s) ---
-  const isHazard = res.isWindowBroken || res.isCarGlassBroken || res.isAcHit || res.isNewspaperHit;
-  if (isHazard && t < 0.15) {
-    ctx.save();
-    ctx.globalAlpha = 0.18 * (1 - t / 0.15);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, CONFIG.world.width, CONFIG.world.height);
-    ctx.restore();
-  }
 
   drawWindowBreak(ctx, res, t);
   drawCarHit(ctx, res, t);
@@ -56,8 +46,10 @@ function drawWindowBreak(ctx: CanvasRenderingContext2D, res: NonNullable<GameSta
 function drawCarHit(ctx: CanvasRenderingContext2D, res: NonNullable<GameState['lastResult']>, t: number): void {
   if (res.outcome !== 'CAR_GLASS' && !res.isCarGlassBroken) return;
   const c = CONFIG.layout.car;
-  const impactX = c.x + c.width * 0.35, impactY = c.y + 25;
-  // Glass crack lines from impact point
+  // Impact precisely on the car's window glass
+  const impactX = c.x + 194, impactY = c.y - 37;
+
+  // Glass crack lines radiating across car window glass
   ctx.save();
   ctx.strokeStyle = 'rgba(200, 220, 255, 0.7)'; ctx.lineWidth = 1.8;
   const angles = [-2.2, -1.6, -0.8, 0, 0.6, 1.4];
@@ -76,21 +68,78 @@ function drawCarHit(ctx: CanvasRenderingContext2D, res: NonNullable<GameState['l
     }
   }
   ctx.restore();
-  // Hazard indicators — delayed by 0.35s, then blink at 4Hz
+
+  // Hazard indicator — realistic automotive flasher cadence & optics
   if (t > 0.35) {
-    const blinkPhase = Math.floor((t - 0.35) * 8) % 2 === 0;
-    if (blinkPhase) {
-      ctx.save();
-      ctx.fillStyle = '#FFA500'; ctx.shadowColor = '#FF8800'; ctx.shadowBlur = 18;
-      // Rear indicator (right edge of car)
-      ctx.beginPath(); ctx.arc(c.x + c.width - 10, c.y + c.height * 0.1, 4, 0, Math.PI * 2); ctx.fill();
-      // Warm glow halo on rear light
-      ctx.globalAlpha = 0.55;
-      ctx.beginPath(); ctx.arc(c.x + c.width - 10, c.y + c.height * 0.1, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#FF6600'; ctx.fill();
-      ctx.restore();
+    const elapsed = t - 0.35;
+    const cycle = elapsed % 0.65; // ~92 flashes/min cadence
+    let intensity = 0;
+    if (cycle < 0.05) {
+      intensity = cycle / 0.05; // rapid incandescent rise
+    } else if (cycle < 0.22) {
+      intensity = 1.0;          // sustained peak illumination
+    } else if (cycle < 0.38) {
+      intensity = Math.max(0, 1.0 - (cycle - 0.22) / 0.16); // natural decay
+    }
+
+    if (intensity > 0.02) {
+      const indX = c.x + c.width - 10;
+      const indY = c.y + c.height * 0.1;
+      drawRealisticIndicator(ctx, indX, indY, intensity);
     }
   }
+}
+
+function drawRealisticIndicator(ctx: CanvasRenderingContext2D, x: number, y: number, intensity: number): void {
+  ctx.save();
+
+  // 1. Wide warm ambient radial bloom across car body
+  const gradWide = ctx.createRadialGradient(x, y, 2, x, y, 24);
+  gradWide.addColorStop(0, `rgba(255, 140, 0, ${(0.42 * intensity).toFixed(3)})`);
+  gradWide.addColorStop(0.5, `rgba(255, 95, 0, ${(0.18 * intensity).toFixed(3)})`);
+  gradWide.addColorStop(1, 'rgba(255, 80, 0, 0)');
+  ctx.fillStyle = gradWide;
+  ctx.beginPath();
+  ctx.arc(x, y, 24, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Focused lens bloom
+  const gradCore = ctx.createRadialGradient(x, y, 1, x, y, 10);
+  gradCore.addColorStop(0, `rgba(255, 230, 130, ${(0.95 * intensity).toFixed(3)})`);
+  gradCore.addColorStop(0.45, `rgba(255, 150, 0, ${(0.85 * intensity).toFixed(3)})`);
+  gradCore.addColorStop(1, 'rgba(255, 100, 0, 0)');
+  ctx.fillStyle = gradCore;
+  ctx.beginPath();
+  ctx.arc(x, y, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Rotated indicator lens: angled ~50 deg along car taillight, NO dark border
+  ctx.translate(x, y);
+  ctx.rotate(-50 * (Math.PI / 180));
+
+  // Amber prismatic lens
+  ctx.fillStyle = `rgba(255, 155, 0, ${(0.85 + 0.15 * intensity).toFixed(3)})`;
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(-6, -2.5, 12, 5, 2);
+    ctx.fill();
+  } else {
+    ctx.fillRect(-6, -2.5, 12, 5);
+  }
+
+  // Hot emitter filament core
+  ctx.fillStyle = `rgba(255, 255, 225, ${(0.95 * intensity).toFixed(3)})`;
+  ctx.fillRect(-4, -1, 8, 2);
+
+  // Subtle optical glint streak along rotated axis
+  ctx.strokeStyle = `rgba(255, 235, 160, ${(0.5 * intensity).toFixed(3)})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-12, 0);
+  ctx.lineTo(12, 0);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function drawAcSparks(ctx: CanvasRenderingContext2D, res: NonNullable<GameState['lastResult']>, t: number): void {
