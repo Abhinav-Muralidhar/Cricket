@@ -173,9 +173,9 @@ function drawLoadingScreen(ctx: CanvasRenderingContext2D, cam: CameraViewport): 
   ctx.fillText('Loading pitch & players...', cx, cy + 50);
 
   // Minimal creator credit stuck to bottom
-  ctx.fillStyle = 'rgba(245, 233, 207, 0.40)';
-  ctx.font = '500 11px system-ui, Roboto, sans-serif';
-  ctx.fillText('Developed by Abhinav M', cx, cam.cssHeight - 16);
+  ctx.fillStyle = 'rgba(245, 233, 207, 0.48)';
+  ctx.font = '500 12px system-ui, -apple-system, Roboto, sans-serif';
+  ctx.fillText('Developed by Abhinav M ↗', cx, cam.cssHeight - 20);
 
   ctx.restore();
 }

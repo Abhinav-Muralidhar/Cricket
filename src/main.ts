@@ -61,6 +61,8 @@ function initGame(): void {
       toggleAudioMute();
     },
     onDebugToggle: () => {
+      const isAllowed = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.search.includes('debug=true');
+      if (!isAllowed) return;
       state.debugMode = !state.debugMode;
       if (state.debugMode) {
         console.log(`[DEBUG MODE ON] Selected: ${characters3D.selectedDebugChar.toUpperCase()}`);
@@ -99,6 +101,10 @@ function initGame(): void {
     onCycle3DCharacter: () => characters3D.cycleDebugCharacter(),
     onNudge3DCharacter: (dx, dy, dYaw) => characters3D.nudgeDebugCharacter(dx, dy, dYaw),
     is3DMode: () => state.debugMode && CONFIG.use3DCharacters,
+    isTitleOrGameOver: () => state.state === 'TITLE' || state.state === 'GAME_OVER' || (CONFIG.use3DCharacters && !characters3D.isReady),
+    onAuthorClick: () => {
+      window.open('https://github.com/Abhinav-Muralidhar', '_blank', 'noopener,noreferrer');
+    },
   });
 
   let lastTime = performance.now();

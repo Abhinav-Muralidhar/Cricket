@@ -19,15 +19,10 @@ export function drawRotatePhoneOverlay(ctx: CanvasRenderingContext2D, cam: Camer
 
   ctx.save();
   ctx.translate(cx, cy - 50);
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.roundRect(-22, -36, 44, 72, 8);
-  ctx.stroke();
-
+  ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(-22, -36, 44, 72, 8); ctx.stroke();
   ctx.fillStyle = '#38bdf8';
   ctx.beginPath(); ctx.arc(0, 26, 3, 0, Math.PI * 2); ctx.fill();
-
   ctx.beginPath(); ctx.arc(0, 0, 48, -Math.PI * 0.35, Math.PI * 0.45, false); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(35, 34); ctx.lineTo(44, 44); ctx.lineTo(28, 46); ctx.fill();
   ctx.restore();
@@ -53,7 +48,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
   ctx.strokeStyle = 'rgba(245, 233, 207, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.fillStyle = PALETTE.cream; ctx.font = 'bold 15px monospace';
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(`RUNS ${state.score}  B#${state.ballCount}`, pillX + 18, pillY + pillH / 2);
+  ctx.fillText(`RUNS ${state.score}  LIVES`, pillX + 18, pillY + pillH / 2);
   for (let i = 0; i < CONFIG.gameplay.initialLives; i++) {
     const bx = pillX + 195 + i * 22, by = pillY + pillH / 2, alive = i < state.lives;
     ctx.beginPath(); ctx.arc(bx, by, 6.5, 0, Math.PI * 2);
@@ -89,9 +84,9 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     } else if (res.outcome === 'BOWLED') {
       numText = 'OUT'; tag = 'WICKET'; numColor = '#F87171'; ccDesc = 'CLEAN BOWLED • TIMBER!';
     } else if (res.livesLost > 0) {
-      numText = '-1'; tag = 'LOST BALL'; numColor = '#F87171';
-      ccDesc = res.outcome === 'CAR_GLASS' ? 'CAR HIT • BALL LOST' : res.outcome === 'WINDOW' ? 'WINDOW SMASH • BALL LOST' :
-        res.outcome === 'AC_UNIT' ? 'AC UNIT HIT • BALL LOST' : res.outcome === 'NEWSPAPER' ? 'NEWSPAPER HIT • BALL LOST' : res.description;
+      numText = '-1 LIFE'; tag = 'BALL LOST'; numColor = '#F87171';
+      ccDesc = res.outcome === 'CAR_GLASS' ? 'CAR HIT • BALL LOST (-1 LIFE)' : res.outcome === 'WINDOW' ? 'WINDOW SMASH • BALL LOST (-1 LIFE)' :
+        res.outcome === 'AC_UNIT' ? 'AC UNIT HIT • BALL LOST (-1 LIFE)' : res.outcome === 'NEWSPAPER' ? 'NEWSPAPER HIT • BALL LOST (-1 LIFE)' : res.description;
     }
 
     // A. Expanding shockwave ring behind number
@@ -110,7 +105,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     ctx.font = '800 12px system-ui, Roboto, sans-serif';
     ctx.fillStyle = numColor;
     ctx.fillText(tag, 0, -38);
-    ctx.font = 'italic 800 70px system-ui, Roboto, sans-serif';
+    ctx.font = `italic 800 ${numText.length > 3 ? 42 : 70}px system-ui, Roboto, sans-serif`;
     ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(15, 23, 42, 0.9)';
     ctx.strokeText(numText, 0, 4);
     ctx.fillStyle = numColor; ctx.fillText(numText, 0, 4);
@@ -156,23 +151,30 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     const cy = cam.cssHeight / 2;
 
     if (state.state === 'TITLE') {
-      ctx.fillStyle = PALETTE.buildingA; ctx.font = '900 48px sans-serif'; ctx.fillText('GULLY CRICKET', cx, cy - 40);
-      ctx.fillStyle = PALETTE.cream; ctx.font = '20px sans-serif'; ctx.fillText('Neighborhood Chaos', cx, cy - 2);
-      ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 24px sans-serif'; ctx.fillText('TAP OR PRESS SPACE TO BOWL', cx, cy + 60);
+      ctx.fillStyle = PALETTE.buildingA; ctx.font = '900 46px sans-serif'; ctx.fillText('GULLY CRICKET', cx, cy - 82);
+      ctx.fillStyle = PALETTE.cream; ctx.font = '18px sans-serif'; ctx.fillText('Neighborhood Chaos', cx, cy - 50);
+
+      // Rules hint card
+      const rw = 330, rh = 62, rx = cx - rw / 2, ry = cy - 26;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+      ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, 10); ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = PALETTE.cream; ctx.font = '500 12px system-ui, sans-serif';
+      ctx.fillText('🚗 Hitting cars/windows loses the ball (-1 Life)', cx, ry + 35);
+      ctx.fillText('🔴 3 Lives total • Clean bowled = OUT!', cx, ry + 51);
+
+      ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('TAP OR PRESS SPACE TO BOWL', cx, cy + 64);
     } else {
       ctx.fillStyle = PALETTE.ball; ctx.font = '900 52px sans-serif'; ctx.fillText('GAME OVER', cx, cy - 40);
       ctx.fillStyle = PALETTE.cream; ctx.font = 'bold 28px monospace'; ctx.fillText(`FINAL SCORE: ${state.score} RUNS`, cx, cy + 10);
       ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('TAP OR PRESS SPACE TO RETRY', cx, cy + 65);
     }
-  }
 
-  // 5. Creator credit stuck minimal to bottom of screen
-  ctx.save();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(245, 233, 207, 0.38)';
-  ctx.font = '500 11px system-ui, -apple-system, Roboto, sans-serif';
-  ctx.fillText('Developed by Abhinav M', cam.cssWidth / 2, cam.cssHeight - 14);
-  ctx.restore();
+    // 5. Creator credit link (Title & Game Over only)
+    ctx.fillStyle = 'rgba(245, 233, 207, 0.48)';
+    ctx.font = '500 12px system-ui, -apple-system, Roboto, sans-serif';
+    ctx.fillText('Developed by Abhinav M ↗', cx, cam.cssHeight - 20);
+  }
 
   ctx.restore();
 }

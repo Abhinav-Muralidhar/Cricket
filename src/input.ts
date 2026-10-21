@@ -18,6 +18,8 @@ export interface InputHandlers {
   onNudge3DCharacter?: (dx: number, dy: number, dYaw: number) => void;
   onAudioToggle?: () => void;
   is3DMode?: () => boolean;
+  isTitleOrGameOver?: () => boolean;
+  onAuthorClick?: () => void;
 }
 
 export class InputManager {
@@ -38,8 +40,6 @@ export class InputManager {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = e.clientX - rect.left;
       const clientY = e.clientY - rect.top;
-      const canvasX = (clientX / rect.width) * this.canvas.width;
-      const canvasY = (clientY / rect.height) * this.canvas.height;
 
       // Audio mute/unmute touch region: top right corner (clientX >= rect.width - 65 && clientY <= 65)
       if (clientX >= rect.width - 65 && clientY <= 65) {
@@ -47,13 +47,22 @@ export class InputManager {
         return;
       }
 
-      // Debug toggle touch region: top center right
-      if (canvasX >= 560 && canvasX <= 710 && canvasY >= 15 && canvasY <= 75) {
-        this.handlers.onDebugToggle();
+      // Author credit click region (only during Title, Loading, or Game Over)
+      if (this.handlers.isTitleOrGameOver?.() && Math.abs(clientX - rect.width / 2) < 130 && clientY >= rect.height - 42) {
+        this.handlers.onAuthorClick?.();
         return;
       }
 
       this.handlers.onAction();
+    });
+
+    // Pointer hover effect for clickable HUD elements
+    this.canvas.addEventListener('pointermove', (e: PointerEvent) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const clientX = e.clientX - rect.left, clientY = e.clientY - rect.top;
+      const isMute = clientX >= rect.width - 65 && clientY <= 65;
+      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && Math.abs(clientX - rect.width / 2) < 130 && clientY >= rect.height - 42;
+      this.canvas.style.cursor = isMute || isAuthor ? 'pointer' : 'default';
     });
 
     this.canvas.addEventListener('contextmenu', (e: MouseEvent) => {

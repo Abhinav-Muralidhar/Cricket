@@ -67,11 +67,11 @@ export function updateResponsiveLayout(cam: CameraViewport): void {
   CONFIG.layout.acUnit.height = 45 * coverScale;
 
   // 3. Uncle's newspaper on balcony
-  const news = toW(575, 245);
+  const news = toW(580, 295);
   CONFIG.layout.newspaper.x = news.x;
   CONFIG.layout.newspaper.y = news.y;
-  CONFIG.layout.newspaper.width = 50 * coverScale;
-  CONFIG.layout.newspaper.height = 45 * coverScale;
+  CONFIG.layout.newspaper.width = 56 * coverScale;
+  CONFIG.layout.newspaper.height = 48 * coverScale;
 
   // 4. Parked car bounds in world coordinates
   const car = toW(1260, 475);
