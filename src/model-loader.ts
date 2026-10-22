@@ -1,10 +1,11 @@
 /**
- * model-loader.ts - Loads base character model (idle.fbx) and animation clips
+ * model-loader.ts - Loads character models (GLB) and animation clips
  * from public/models/, cleans root motion drift, and instantiates cloned characters.
  */
 
 import * as THREE from 'three';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
   createToonMaterial,
@@ -71,62 +72,48 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
   if (isLoading) return;
   isLoading = true;
 
-  const loader = new FBXLoader();
-  const clipFiles: Record<string, string> = {
-    idle: '/models/idle.fbx',
-    swing: '/models/swing.fbx',
-    pitch: '/models/pitch.fbx',
-    run: '/models/Run.fbx',
-    slide: '/models/slide.fbx',
-    dive: '/models/dive.fbx',
-    defeated: '/models/defeated.fbx',
-    clap: '/models/clap.fbx',
-    cheer: '/models/cheer.fbx',
-  };
+  const loader = new GLTFLoader();
+  loader.setMeshoptDecoder(MeshoptDecoder);
 
-  const total = Object.keys(clipFiles).length;
   let finished = 0;
-
-  const loadFile = async (name: string, url: string): Promise<void> => {
-    try {
-      const fbx = await loader.loadAsync(url);
-      if (name === 'idle') {
-        baseCharacterModel = fbx;
-        characterModels.set('default', fbx);
-        characterModels.set('fielder', fbx);
-        const box = new THREE.Box3().setFromObject(fbx);
-        nativeModelHeight = Math.max(1, box.max.y - box.min.y);
-      } else if (name === 'pitch') {
-        fbx.traverse((c) => { if (c instanceof THREE.Bone) c.name = c.name.replace(/^mixamorig\d+/i, 'mixamorig'); });
-        characterModels.set('bowler', fbx);
-      } else if (name === 'swing') {
-        fbx.traverse((c) => { if (c instanceof THREE.Bone) c.name = c.name.replace(/^mixamorig\d+/i, 'mixamorig'); });
-        characterModels.set('batter', fbx);
-      }
-      if (fbx.animations && fbx.animations.length > 0) {
-        const valid = fbx.animations.find((a) => a.tracks && a.tracks.length > 0) || fbx.animations[0];
-        let clip = valid.clone();
-        clip.name = name;
-        if (name === 'run') clip = removeRootDrift(clip);
-        if (name === 'pitch') clip = THREE.AnimationUtils.subclip(clip, 'pitch', 40, 76, 30);
-        animationClips.set(name, clip);
-      }
-    } catch (err) {
-      if (url.includes('Run.fbx')) {
-        try {
-          const fallback = await loader.loadAsync('/models/run.fbx');
-          const valid = fallback.animations?.find((a) => a.tracks && a.tracks.length > 0) || fallback.animations?.[0];
-          if (valid) animationClips.set(name, removeRootDrift(valid.clone()));
-        } catch { /* ignored */ }
-      }
-    } finally {
-      finished++;
-      if (onProgress) onProgress(finished / total);
-    }
+  const updateProgress = () => {
+    finished++;
+    if (onProgress) onProgress(finished / 4);
   };
 
-  await Promise.all(Object.entries(clipFiles).map(([name, url]) => loadFile(name, url)));
-  if (!baseCharacterModel) throw new Error('[3D Loader] Base character model failed');
+  const [batterGltf, bowlerGltf, fielderGltf, animsGltf] = await Promise.all([
+    loader.loadAsync('/models/batter.glb').then((g) => { updateProgress(); return g; }),
+    loader.loadAsync('/models/bowler.glb').then((g) => { updateProgress(); return g; }),
+    loader.loadAsync('/models/fielder.glb').then((g) => { updateProgress(); return g; }),
+    loader.loadAsync('/models/anims.glb').then((g) => { updateProgress(); return g; }),
+  ]);
+
+  const cleanBones = (obj: THREE.Object3D) => {
+    obj.traverse((c) => {
+      if (c instanceof THREE.Bone) c.name = c.name.replace(/^mixamorig\d+/i, 'mixamorig');
+    });
+  };
+
+  cleanBones(batterGltf.scene);
+  cleanBones(bowlerGltf.scene);
+  cleanBones(fielderGltf.scene);
+
+  characterModels.set('batter', batterGltf.scene);
+  characterModels.set('bowler', bowlerGltf.scene);
+  characterModels.set('fielder', fielderGltf.scene);
+  characterModels.set('default', fielderGltf.scene);
+  baseCharacterModel = fielderGltf.scene;
+
+  const box = new THREE.Box3().setFromObject(fielderGltf.scene);
+  nativeModelHeight = Math.max(1, box.max.y - box.min.y);
+
+  for (const origClip of animsGltf.animations) {
+    let clip = origClip.clone();
+    const name = clip.name;
+    if (name === 'run') clip = removeRootDrift(clip);
+    if (name === 'pitch') clip = THREE.AnimationUtils.subclip(clip, 'pitch', 40, 76, 30);
+    animationClips.set(name, clip);
+  }
 
   animationClips.forEach((clip) => {
     clip.tracks.forEach((track) => {
@@ -163,6 +150,7 @@ export function instantiateCharacter(
   for (const mesh of meshes) {
     const origMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     const origMap = (origMat as THREE.MeshStandardMaterial)?.map || null;
+    if (origMap) origMap.colorSpace = THREE.SRGBColorSpace;
     const isEyelash = mesh.name.toLowerCase().includes('eyelash');
     mesh.material = createToonMaterial(color, origMap);
     if (isEyelash) {

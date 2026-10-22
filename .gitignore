@@ -17,3 +17,6 @@ yarn-error.log*
 .vscode/
 .idea/
 scratch/
+
+# Raw assets backup (original high-res FBX files)
+assets-src/

@@ -1,5 +1,7 @@
 # 🏏 Gully Cricket: Neighborhood Chaos
 
+> 🎮 **Play Live Now**: [https://playgully.vercel.app/](https://playgully.vercel.app/)
+
 A nostalgic, fast-paced 3D Indian street cricket browser game built with **TypeScript**, **HTML5 Canvas**, **Three.js**, and procedural **Web Audio API**.
 
 Play directly in any desktop or mobile browser — zero installs, 60 FPS performance, authentic street ambiance, and reactive neighborhood targets.
@@ -92,9 +94,15 @@ npm run preview
 
 ---
 
+## 🎨 Credits & Attributions
+
+* **3D Characters & Skeletal Animations**: [Mixamo by Adobe](https://www.mixamo.com/)
+* **Background Environment Artwork**: Generated with [Google AI Studio](https://aistudio.google.com/)
+* **Audio & Sound Effects**: Procedural synthesis & web soundscape powered by the native [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+
+---
+
 ## 👤 Author
 
 Developed by **Abhinav M**  
-* GitHub: [@Abhinav-Muralidhar](https://github.com/Abhinav-Muralidhar)
-
 ---
