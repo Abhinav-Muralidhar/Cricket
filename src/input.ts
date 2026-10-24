@@ -22,6 +22,8 @@ export interface InputHandlers {
   is3DMode?: () => boolean;
   isTitleOrGameOver?: () => boolean;
   onAuthorClick?: () => void;
+  onGameOverPointer?: (clientX: number, clientY: number) => boolean;
+  isGameOverHover?: (clientX: number, clientY: number) => boolean;
 }
 
 export class InputManager {
@@ -55,13 +57,17 @@ export class InputManager {
         }
       }
 
-      // Title/Game Over corner buttons: Author credit (center bottom) & PWA Install (bottom right)
+      // Title/Game Over buttons
+      if (this.handlers.onGameOverPointer?.(clientX, clientY)) {
+        return;
+      }
+
       if (this.handlers.isTitleOrGameOver?.()) {
-        if (clientX >= rect.width - 115 && clientY >= rect.height - 48) {
+        if (clientX >= rect.width - 125 && clientY >= rect.height - 42) {
           this.handlers.onInstallClick?.();
           return;
         }
-        if (Math.abs(clientX - rect.width / 2) < 130 && clientY >= rect.height - 42) {
+        if (clientX >= 12 && clientX <= 220 && clientY >= rect.height - 42) {
           this.handlers.onAuthorClick?.();
           return;
         }
@@ -76,9 +82,10 @@ export class InputManager {
       const clientX = e.clientX - rect.left, clientY = e.clientY - rect.top;
       const isMute = clientX >= rect.width - 56 && clientY <= 60;
       const isFs = clientX >= rect.width - 105 && clientX < rect.width - 56 && clientY <= 60;
-      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && Math.abs(clientX - rect.width / 2) < 130 && clientY >= rect.height - 42;
-      const isInstall = !!this.handlers.isTitleOrGameOver?.() && clientX >= rect.width - 115 && clientY >= rect.height - 48;
-      this.canvas.style.cursor = isMute || isFs || isAuthor || isInstall ? 'pointer' : 'default';
+      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && clientX >= 12 && clientX <= 220 && clientY >= rect.height - 42;
+      const isInstall = !!this.handlers.isTitleOrGameOver?.() && clientX >= rect.width - 125 && clientY >= rect.height - 42;
+      const isGameOverBtn = !!this.handlers.isGameOverHover?.(clientX, clientY);
+      this.canvas.style.cursor = isMute || isFs || isAuthor || isInstall || isGameOverBtn ? 'pointer' : 'default';
     });
 
     this.canvas.addEventListener('contextmenu', (e: MouseEvent) => {

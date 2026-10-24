@@ -8,34 +8,26 @@ import { isAudioMuted } from './audio.ts';
 import { isStandalonePWA } from './pwa.ts';
 import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
+import { drawGameOverHUD, getStoredBestScore } from './share.ts';
+import { drawTitleHUD } from './title-hud.ts';
 
 export function drawRotatePhoneOverlay(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
   ctx.save();
   ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
   ctx.fillStyle = 'rgba(18, 18, 24, 0.96)';
   ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
-
-  const cx = cam.cssWidth / 2;
-  const cy = cam.cssHeight / 2;
-
+  const cx = cam.cssWidth / 2, cy = cam.cssHeight / 2;
   ctx.save();
   ctx.translate(cx, cy - 50);
   ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.roundRect(-22, -36, 44, 72, 8); ctx.stroke();
-  ctx.fillStyle = '#38bdf8';
-  ctx.beginPath(); ctx.arc(0, 26, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(0, 26, 3, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(0, 0, 48, -Math.PI * 0.35, Math.PI * 0.45, false); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(35, 34); ctx.lineTo(44, 44); ctx.lineTo(28, 46); ctx.fill();
   ctx.restore();
-
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '900 24px sans-serif';
-  ctx.fillText('PLEASE ROTATE YOUR PHONE', cx, cy + 35);
-  ctx.fillStyle = PALETTE.cream;
-  ctx.font = '15px sans-serif';
-  ctx.fillText('Gully Cricket is best played in landscape mode', cx, cy + 68);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#FFFFFF'; ctx.font = '900 24px sans-serif'; ctx.fillText('PLEASE ROTATE YOUR PHONE', cx, cy + 35);
+  ctx.fillStyle = PALETTE.cream; ctx.font = '15px sans-serif'; ctx.fillText('Gully Cricket is best played in landscape mode', cx, cy + 68);
   ctx.restore();
 }
 
@@ -43,18 +35,32 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
   ctx.save();
 
   // 1. Top-left dark scoreboard pill & audio toggle
-  const pillX = 20, pillY = 18, pillW = 280, pillH = 46;
-  ctx.fillStyle = 'rgba(30, 30, 36, 0.70)';
-  ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 23); ctx.fill();
-  ctx.strokeStyle = 'rgba(245, 233, 207, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.fillStyle = PALETTE.cream; ctx.font = 'bold 15px monospace';
+  const bestScore = Math.max(state.score, getStoredBestScore());
+  const pillX = 18, pillY = 18, pillW = 316, pillH = 44, cyPill = pillY + pillH / 2;
+  ctx.fillStyle = 'rgba(26, 24, 28, 0.82)';
+  ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 22); ctx.fill();
+  ctx.strokeStyle = 'rgba(242, 193, 78, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(`RUNS ${state.score}  LIVES`, pillX + 18, pillY + pillH / 2);
+  ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
+  ctx.fillText(`RUNS ${state.score}`, pillX + 16, cyPill);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pillX + 88, pillY + 11); ctx.lineTo(pillX + 88, pillY + pillH - 11); ctx.stroke();
+
+  ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#FBBF24';
+  ctx.fillText(`BEST ${bestScore}`, pillX + 100, cyPill);
+
+  ctx.beginPath(); ctx.moveTo(pillX + 172, pillY + 11); ctx.lineTo(pillX + 172, pillY + pillH - 11); ctx.stroke();
+
+  ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
+  ctx.fillText('LIVES', pillX + 184, cyPill);
+
   for (let i = 0; i < CONFIG.gameplay.initialLives; i++) {
-    const bx = pillX + 195 + i * 22, by = pillY + pillH / 2, alive = i < state.lives;
-    ctx.beginPath(); ctx.arc(bx, by, 6.5, 0, Math.PI * 2);
-    ctx.fillStyle = alive ? PALETTE.ball : 'rgba(100, 100, 100, 0.4)'; ctx.fill();
-    ctx.lineWidth = 1.5; ctx.strokeStyle = alive ? PALETTE.roadLines : 'rgba(150, 150, 150, 0.3)'; ctx.stroke();
+    const bx = pillX + 238 + i * 20, alive = i < state.lives;
+    ctx.beginPath(); ctx.arc(bx, cyPill, 6, 0, Math.PI * 2);
+    ctx.fillStyle = alive ? PALETTE.ball : 'rgba(100, 100, 100, 0.35)'; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = alive ? '#FDE68A' : 'rgba(150, 150, 150, 0.25)'; ctx.stroke();
   }
 
   // Top-right buttons: Fullscreen (cam.cssWidth - 96) & Audio mute (cam.cssWidth - 54)
@@ -148,43 +154,28 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
 
   // 4. Title / Game Over Screen Overlay
   if (state.state === 'TITLE' || state.state === 'GAME_OVER') {
-    ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
-    ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
-    ctx.textAlign = 'center';
-    const cx = cam.cssWidth / 2, cy = cam.cssHeight / 2;
-
     if (state.state === 'TITLE') {
-      ctx.fillStyle = PALETTE.buildingA; ctx.font = '900 46px sans-serif'; ctx.fillText('GULLY CRICKET', cx, cy - 82);
-      ctx.fillStyle = PALETTE.cream; ctx.font = '18px sans-serif'; ctx.fillText('Neighborhood Chaos', cx, cy - 50);
-
-      // Rules hint card
-      const rw = 330, rh = 62, rx = cx - rw / 2, ry = cy - 26;
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
-      ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, 10); ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = PALETTE.cream; ctx.font = '500 12px system-ui, sans-serif';
-      ctx.fillText('🚗 Hitting cars/windows loses the ball (-1 Life)', cx, ry + 35);
-      ctx.fillText('🔴 3 Lives total • Clean bowled = OUT!', cx, ry + 51);
-
-      ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('TAP OR PRESS SPACE TO BOWL', cx, cy + 64);
+      drawTitleHUD(ctx, cam);
     } else {
-      ctx.fillStyle = PALETTE.ball; ctx.font = '900 52px sans-serif'; ctx.fillText('GAME OVER', cx, cy - 40);
-      ctx.fillStyle = PALETTE.cream; ctx.font = 'bold 28px monospace'; ctx.fillText(`FINAL SCORE: ${state.score} RUNS`, cx, cy + 10);
-      ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('TAP OR PRESS SPACE TO RETRY', cx, cy + 65);
+      ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
+      ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
+      drawGameOverHUD(ctx, state, cam);
     }
 
-    // 5. Creator credit link & corner PWA install button (Title & Game Over only)
+    // 5. Creator credit & corner PWA install button (Title & Game Over only)
+    ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(245, 233, 207, 0.48)';
     ctx.font = '500 12px system-ui, -apple-system, Roboto, sans-serif';
-    ctx.fillText('Developed by Abhinav M ↗', cx, cam.cssHeight - 20);
+    ctx.fillText('Developed by Abhinav M ↗', 20, cam.cssHeight - 20);
 
     if (!isStandalonePWA()) {
-      const ix = cam.cssWidth - 108, iy = cam.cssHeight - 40;
-      ctx.fillStyle = 'rgba(30, 30, 36, 0.75)';
-      ctx.beginPath(); ctx.roundRect(ix, iy, 92, 26, 13); ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = '#FFFFFF'; ctx.font = '500 11px system-ui, sans-serif';
-      ctx.fillText('📲 Install App', ix + 46, iy + 13);
+      const iw = 100, ih = 28, ix = cam.cssWidth - iw - 20, iy = cam.cssHeight - 34;
+      ctx.fillStyle = 'rgba(30, 30, 36, 0.85)';
+      ctx.beginPath(); ctx.roundRect(ix, iy, iw, ih, 14); ctx.fill();
+      ctx.strokeStyle = 'rgba(242, 193, 78, 0.38)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#FFFFFF'; ctx.font = '600 11px system-ui, sans-serif';
+      ctx.fillText('📲 Install App', ix + iw / 2, iy + ih / 2);
     }
   }
 
@@ -230,14 +221,13 @@ export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState):
     ctx.fillText(lbl, sx + w / 2 - 8, zoneY + 15);
   };
 
-  drawZone(180, 240, 'rgba(214, 40, 40, 0.85)', 'WIN');
-  drawZone(130, 180, 'rgba(56, 189, 248, 0.85)', 'AC');
-  drawZone(75, 130, 'rgba(250, 204, 21, 0.85)', 'NEWS');
-  drawZone(22, 75, 'rgba(6, 182, 212, 0.8)', '4');
-  drawZone(-22, 22, 'rgba(16, 185, 129, 0.9)', '6');
-  drawZone(-22, -38, 'rgba(6, 182, 212, 0.8)', '4');
-  drawZone(-38, -50, 'rgba(234, 179, 8, 0.8)', '1');
-  drawZone(-50, -98, 'rgba(249, 115, 22, 0.85)', 'CAR');
+  const zones: [number, number, string, string][] = [
+    [180, 240, 'rgba(214, 40, 40, 0.85)', 'WIN'], [130, 180, 'rgba(56, 189, 248, 0.85)', 'AC'],
+    [75, 130, 'rgba(250, 204, 21, 0.85)', 'NEWS'], [22, 75, 'rgba(6, 182, 212, 0.8)', '4'],
+    [-22, 22, 'rgba(16, 185, 129, 0.9)', '6'], [-22, -38, 'rgba(6, 182, 212, 0.8)', '4'],
+    [-38, -50, 'rgba(234, 179, 8, 0.8)', '1'], [-50, -98, 'rgba(249, 115, 22, 0.85)', 'CAR']
+  ];
+  for (const [mi, ma, c, l] of zones) drawZone(mi, ma, c, l);
 
   if (state.ball.active || state.state === 'BOWLING') {
     ctx.strokeStyle = '#facc15';

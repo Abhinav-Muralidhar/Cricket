@@ -8,6 +8,7 @@ import { drawBackground } from './background.ts';
 import { drawCharacter } from './characters.ts';
 import { drawDynamicEffects } from './effects.ts';
 import { drawHUD, drawWorldDebug, drawRotatePhoneOverlay } from './hud.ts';
+import { drawGullyBadge } from './title-hud.ts';
 import type { GameState } from './types.ts';
 import type { Characters3DManager } from './characters3d.ts';
 
@@ -148,18 +149,13 @@ function drawLoadingScreen(ctx: CanvasRenderingContext2D, cam: CameraViewport): 
   const cx = cam.cssWidth / 2;
   const cy = cam.cssHeight / 2;
 
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = PALETTE.buildingA;
-  ctx.font = '900 44px sans-serif';
-  ctx.fillText('GULLY CRICKET', cx, cy - 44);
-
-  ctx.fillStyle = PALETTE.cream;
-  ctx.font = '16px sans-serif';
-  ctx.fillText('Neighborhood Chaos', cx, cy - 12);
+  // Custom Gully Cricket emblem badge
+  const badgeW = Math.min(290, cam.cssWidth - 36), badgeH = 64;
+  const badgeX = cx - badgeW / 2, badgeY = cy - 64;
+  drawGullyBadge(ctx, { x: badgeX, y: badgeY, w: badgeW, h: badgeH }, cx);
 
   // Animated loading bar
-  const barW = 200, barH = 5, barX = cx - barW / 2, barY = cy + 24;
+  const barW = 200, barH = 5, barX = cx - barW / 2, barY = badgeY + badgeH + 20;
   ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
   ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
 
@@ -168,14 +164,17 @@ function drawLoadingScreen(ctx: CanvasRenderingContext2D, cam: CameraViewport): 
   ctx.fillStyle = '#38bdf8';
   ctx.beginPath(); ctx.roundRect(thumbX, barY, thumbW, barH, 2.5); ctx.fill();
 
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = 'rgba(245, 233, 207, 0.75)';
   ctx.font = '12px monospace';
-  ctx.fillText('Loading pitch & players...', cx, cy + 50);
+  ctx.fillText('Loading pitch & players...', cx, barY + 22);
 
-  // Minimal creator credit stuck to bottom
+  // Minimal creator credit stuck to bottom-left corner
+  ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(245, 233, 207, 0.48)';
   ctx.font = '500 12px system-ui, -apple-system, Roboto, sans-serif';
-  ctx.fillText('Developed by Abhinav M ↗', cx, cam.cssHeight - 20);
+  ctx.fillText('Developed by Abhinav M ↗', 20, cam.cssHeight - 20);
 
   ctx.restore();
 }
@@ -215,11 +214,15 @@ export function renderGame(
 
   // 3. Layer 3: 2D dynamic effects, wickets, ball, and optional 2D fallback rigs
   hudCtx.setTransform(cam.dpr * cam.scale, 0, 0, cam.dpr * cam.scale, -cam.worldLeft * cam.dpr * cam.scale, -cam.worldTop * cam.dpr * cam.scale);
-  drawDynamicEffects(hudCtx, state);
-  if (!CONFIG.use3DCharacters) [state.fielder3Rig, state.fielder2Rig, state.fielder1Rig, state.batterRig, state.bowlerRig].forEach((r) => drawCharacter(hudCtx, r));
-  drawWickets(hudCtx, state);
-  drawBall(hudCtx, state);
-  drawWorldDebug(hudCtx, state);
+  if (state.state === 'TITLE') {
+    drawBackground(hudCtx, cam);
+  } else {
+    drawDynamicEffects(hudCtx, state);
+    if (!CONFIG.use3DCharacters) [state.fielder3Rig, state.fielder2Rig, state.fielder1Rig, state.batterRig, state.bowlerRig].forEach((r) => drawCharacter(hudCtx, r));
+    drawWickets(hudCtx, state);
+    drawBall(hudCtx, state);
+    drawWorldDebug(hudCtx, state);
+  }
 
   // 4. Screen-space HUD
   hudCtx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);

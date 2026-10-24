@@ -4,7 +4,9 @@
  */
 
 import { CONFIG } from './config.ts';
-import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip } from './state.ts';
+import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip, resetGame } from './state.ts';
+import { handleGameOverClick, isGameOverButtonHover } from './share.ts';
+import { handleTitleClick, isTitleHover } from './title-hud.ts';
 import { renderGame, computeCamera, type CameraViewport } from './render.ts';
 import { loadBackgroundImage } from './background.ts';
 import { InputManager } from './input.ts';
@@ -119,6 +121,20 @@ function initGame(): void {
     },
     onInstallClick: () => {
       promptPWAInstall();
+    },
+    onGameOverPointer: (clientX: number, clientY: number) => {
+      if (state.state === 'TITLE') {
+        return handleTitleClick(clientX, clientY, camera, () => {
+          resetGame(state);
+        });
+      }
+      return handleGameOverClick(clientX, clientY, camera, state, () => {
+        resetGame(state);
+      });
+    },
+    isGameOverHover: (clientX: number, clientY: number) => {
+      if (state.state === 'TITLE') return isTitleHover(clientX, clientY, camera);
+      return isGameOverButtonHover(clientX, clientY, camera, state.state === 'GAME_OVER');
     },
   });
 
