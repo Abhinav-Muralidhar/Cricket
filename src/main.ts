@@ -139,10 +139,19 @@ function initGame(): void {
     },
     onMilestonePointer: () => (state.milestonePopup?.active ? dismissMilestone(state) : false),
     onMilestoneDismiss: () => (state.milestonePopup?.active ? dismissMilestone(state) : false),
-    onTestMilestone: () => triggerTestMilestone(state),
+    isDebugActive: () => state.debugMode,
+    onTestMilestone: () => {
+      if (state.debugMode) triggerTestMilestone(state);
+    },
   });
 
-  (window as unknown as { testMilestone: () => void }).testMilestone = () => triggerTestMilestone(state);
+  (window as unknown as { testMilestone: () => void }).testMilestone = () => {
+    if (!state.debugMode) {
+      console.warn('[Gully Cricket] Debug mode must be active to trigger test milestone.');
+      return;
+    }
+    triggerTestMilestone(state);
+  };
 
   let lastTime = performance.now();
 

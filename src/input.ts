@@ -27,6 +27,7 @@ export interface InputHandlers {
   onMilestonePointer?: (clientX: number, clientY: number) => boolean;
   onMilestoneDismiss?: () => boolean;
   onTestMilestone?: () => void;
+  isDebugActive?: () => boolean;
 }
 
 export class InputManager {
@@ -124,6 +125,7 @@ export class InputManager {
       }
 
       if (e.code === 'KeyC') {
+        if (!this.handlers.isDebugActive?.()) return;
         e.preventDefault();
         this.handlers.onTestMilestone?.();
         return;

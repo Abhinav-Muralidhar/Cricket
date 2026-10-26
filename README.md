@@ -1,66 +1,76 @@
 # 🏏 Gully Cricket: Neighborhood Chaos
 
-> 🎮 **Play Live Now**: [https://playgully.vercel.app/](https://playgully.vercel.app/)
+> **Play Live Now**: [https://playgully.vercel.app/](https://playgully.vercel.app/)
 
-A nostalgic, fast-paced 3D Indian street cricket browser game built with **TypeScript**, **HTML5 Canvas**, **Three.js**, and procedural **Web Audio API**.
+<p align="center">
+  <img src="./public/og-image.jpg" alt="Gully Cricket: Neighborhood Chaos Game Preview" width="100%" />
+</p>
 
-Play directly in any desktop or mobile browser — zero installs, 60 FPS performance, authentic street ambiance, and reactive neighborhood targets.
-
----
-
-## ✨ Features & Mechanics
-
-### 1. Authentic Street Cricket Rules
-* **Timing-Based Batting**: Time your swing relative to the sweet spot indicator to execute lofted maximums, ground drives, or late dabs.
-* **Reactive Neighborhood Hazards**:
-  * 🚗 **Parked Car**:
-  * 🪟 **Residential Windows**
-  * ❄️ **AC Unit & Newspaper Uncle**
-* **Wicket Physics**
-* **3-Ball Life System**
-
-### 2. Multi-Layered Hybrid Rendering Pipeline
-* **Layer 1 (2D Background)**: Illustrated Indian gully street scene with colorful buildings, balconies, local tea stall, and overhead wiring.
-* **Layer 2 (3D Characters)**: Real-time 3D Three.js rendering for the bowler and batter with FBX animations, custom toon materials, and stance blending.
-* **Layer 3 (2D Effects & Ball Physics)**: Parabolic ball trajectory with ground shadows, bat impact shockwaves, glass shatter shards, and score popups.
-* **Layer 4 (Screen-Space HUD)**: Clean scoreboard pill, live balls indicator, center score badge with shockwave animations, minimal commentary subtitle bar, and audio mute control.
-
-### 3. Procedural Web Audio Soundscape
-* **Zero External Audio Assets**: All sound effects and background ambiances are generated dynamically in real time via the **Web Audio API**.
-* **Impact FX**: Wood-on-leather bat "thock", stump timber crash, glass shatter crunch, and car horn alarm with Doppler modulation.
-* **Living Street Ambience**: Randomized, variable-intensity background birds and distant street horns.
-
-### 4. Responsive & Mobile-First
-* Automatic canvas scaling with aspect ratio preservation and window clamping.
-* Built-in **Rotate Phone** orientation overlay for optimal mobile landscape gameplay.
-* Touch and keyboard inputs supported seamlessly.
+A browser-based Indian street cricket game built with TypeScript, Canvas 2D, Three.js, and the Web Audio API. Playable directly in modern desktop and mobile browsers.
 
 ---
 
-## 🎮 Controls
+## Features and Gameplay Mechanics
 
-| Action | Control |
-| :--- | :--- |
-| **Bowl / Bat** | Left Mouse Click / Mobile Tap / `Spacebar` |
-| **Mute / Unmute Audio** | Top-right 🔊 icon / `M` key |
+### Core Features
+* **Timing-Based Batting**: Swing timing relative to the sweet spot determines whether a shot is a six, four, single, or hazard hit.
+* **Balls Faced Tracking**: The HUD and milestone cards display total balls faced alongside the current score.
+* **Milestone Overlays**: Popups appear when score crosses 50, 100, 150, and 200 runs with audio fanfare and confetti.
+* **3-Ball Life System**: Players start with 3 lives; hitting a hazard or getting bowled costs 1 life, and losing all 3 ends the game.
 
----
-
-## 🛠️ Tech Stack
-
-* **Language**: [TypeScript](https://www.typescriptlang.org/)
-* **Bundler & Dev Server**: [Vite](https://vitejs.dev/)
-* **3D Engine**: [Three.js](https://threejs.org/) (FBXLoader, Bone Rigs, Toon Shaders)
-* **2D Graphics**: Native HTML5 Canvas 2D Context
-* **Audio**: Native Web Audio API (Synthesizers, Noise Buffers, Bandpass Filters)
-* **SEO**: OpenGraph, Twitter Cards, Schema.org `VideoGame` JSON-LD
+### Hazards and Targets
+* **Parked Car**: Hit on a late swing; plays glass break and car alarm audio, awards 0 runs, and deducts 1 life.
+* **Aunty's Window**: Hit on an early lofted shot; plays glass shatter audio, awards 0 runs, and deducts 1 life.
+* **AC Unit**: Hit on an early sliced drive; awards 0 runs and deducts 1 life.
+* **Newspaper Uncle**: Hit on an early pop-up to the balcony; awards 0 runs and deducts 1 life.
+* **Wicket**: Ball passes the batter and crosses the wicket line; plays stump timber clatter audio, awards 0 runs, and deducts 1 life.
 
 ---
 
-## 🚀 Getting Started
+## How It Works
+
+* **Layer 1 (Canvas 2D)**: Static 2D illustrated street background.
+* **Layer 2 (Three.js WebGL)**: 3D animated character meshes with custom toon shading.
+* **Layer 3 (Canvas 2D)**: Parabolic ball trajectory, particle effects, and screen-space HUD overlays.
+* **Audio**: all sound effects and ambience are synthesised at runtime with the Web Audio API, with no audio files.
+
+---
+
+## Controls
+
+| Action | Desktop | Mobile / Touch |
+| :--- | :--- | :--- |
+| **Bowl / Bat** | Left Click / `Spacebar` | Tap Screen |
+| **Mute / Unmute Audio** | `M` key / Top-right 🔊 icon | Tap Top-right 🔊 icon |
+| **Fullscreen Toggle** | `F` key / Top-right ⛶ icon | Tap Top-right ⛶ icon |
+| **Debug Mode (Localhost)** | `D` key | `?debug=true` in URL |
+
+---
+
+## Asset Pipeline
+
+Mixamo FBX files with 4K embedded textures were converted to GLB, textures resized and recompressed, and geometry meshopt-compressed.
+All nine animation takes were consolidated into a single skeleton file (`anims.glb`).
+`public/models` totals 13.81 MB: three character files (batter 4.7 MB, bowler 4.0 MB, fielder 4.0 MB, each mesh plus one 1024px texture) and one shared animation file (1.1 MB).
+
+---
+
+## Tech Stack
+
+* TypeScript
+* Vite
+* Three.js
+* Canvas 2D
+* Web Audio API
+* glTF-Transform and Meshoptimizer
+* Vercel
+
+---
+
+## Local Development
 
 ### Prerequisites
-* [Node.js](https://nodejs.org/) (v18 or higher recommended)
+* [Node.js](https://nodejs.org/) (v18 or higher)
 * `npm`
 
 ### Installation
@@ -75,7 +85,7 @@ cd cricket
 npm install
 ```
 
-### Development
+### Run Dev Server
 ```bash
 npm run dev
 ```
@@ -85,24 +95,18 @@ Open `http://localhost:5173` in your browser.
 ```bash
 npm run build
 ```
-Generates an optimized production bundle inside the `dist/` directory.
-
-### Preview Production Build
-```bash
-npm run preview
-```
+Typechecks with `tsc` and compiles an optimized bundle into `dist/`.
 
 ---
 
-## 🎨 Credits & Attributions
+## Attributions and Credits
 
-* **3D Characters & Skeletal Animations**: [Mixamo by Adobe](https://www.mixamo.com/)
-* **Background Environment Artwork**: Generated with [Google AI Studio](https://aistudio.google.com/)
-* **Audio & Sound Effects**: Procedural synthesis & web soundscape powered by the native [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+* **3D Character Bases & Skeletal Animations**: [Mixamo by Adobe](https://www.mixamo.com/)
+* **Background Environment Artwork**: [Google AI Studio](https://aistudio.google.com/)  
+* Source FBX files are not redistributed in this repo, and the character models and animations are used under Adobe's Mixamo terms.
 
 ---
 
-## 👤 Author
+## Author
 
-Developed by **Abhinav M**  
----
+Developed by **Abhinav M** ([GitHub](https://github.com/Abhinav-Muralidhar))
