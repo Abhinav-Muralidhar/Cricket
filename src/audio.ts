@@ -188,3 +188,24 @@ export function playBallDelivery(): void {
   osc.connect(gain); gain.connect(dest);
   osc.start(now); osc.stop(now + 0.25);
 }
+
+/** Celebratory milestone fanfare (50 / 100 runs) */
+export function playMilestoneFanfare(): void {
+  const ac = getAudioContext(), dest = getDestination();
+  if (!ac || !dest) return;
+  const now = ac.currentTime;
+  // Celebratory ascending brass arpeggio: C5 (523), E5 (659), G5 (784), C6 (1046)
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  notes.forEach((freq, idx) => {
+    const osc = ac.createOscillator(), gain = ac.createGain();
+    const startTime = now + idx * 0.09;
+    const dur = idx === notes.length - 1 ? 0.65 : 0.22;
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.linearRampToValueAtTime(0.28, startTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+    osc.connect(gain); gain.connect(dest);
+    osc.start(startTime); osc.stop(startTime + dur);
+  });
+}

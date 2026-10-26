@@ -140,7 +140,10 @@ export class Characters3DManager {
     // 3. Outcomes & Celebrations (delayed until shot finishes and reaches RESULT state)
     if ((state.state === 'RESULT' || state.state === 'GAME_OVER') && state.lastResult && this.prevStateKind !== 'RESULT' && this.prevStateKind !== 'GAME_OVER') {
       const outcome = state.lastResult.outcome;
-      if (outcome === 'MISS' || outcome === 'BOWLED') {
+      if (state.milestonePopup?.active) {
+        batter?.playCheer();
+        f1?.playClap(); f2?.playClap(); f3?.playClap();
+      } else if (outcome === 'MISS' || outcome === 'BOWLED') {
         batter?.playDefeated();
         bowler?.playCheer();
       } else if (outcome === 'SIX' || outcome === 'FOUR') {

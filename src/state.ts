@@ -7,6 +7,7 @@ import { BATTER_CLIPS, BOWLER_CLIPS, FIELDER_CLIPS } from './poses.ts';
 import { evaluateTiming, setupHitTrajectory } from './timing.ts';
 import { playBatHit, playSwingMiss, playWicketsClatter, playGlassBreak, playCarAlarm, playBallDelivery } from './audio.ts';
 import type { GameState } from './types.ts';
+import { triggerMilestoneIfCrossed, updateMilestone } from './milestone.ts';
 
 export { createRig, createBatterRig, createBowlerRig, createInitialState } from './state-init.ts';
 
@@ -38,7 +39,7 @@ export function startNewDelivery(state: GameState): void {
 
 export function resetGame(state: GameState): void {
   state.score = 0; state.lives = CONFIG.gameplay.initialLives; state.ballCount = 0;
-  state.lastResult = null; state.previewClipName = null;
+  state.lastResult = null; state.previewClipName = null; state.milestonePopup = null;
   startNewDelivery(state);
 }
 
@@ -65,7 +66,9 @@ export function handlePlayerSwing(state: GameState): void {
   if (result.outcome !== 'MISS') {
     playBatHit(result.outcome === 'SIX' ? 'PERFECT' : result.outcome === 'FOUR' ? 'GOOD' : 'EDGED');
     state.lastResult = result;
+    const prevScore = state.score;
     state.score += result.runsScored;
+    triggerMilestoneIfCrossed(state, prevScore);
     state.lives -= result.livesLost;
     setupHitTrajectory(state.ball, result.outcome, result.timingRating);
     state.state = 'HIT';
@@ -232,15 +235,13 @@ export function updateGame(state: GameState, dt: number): void {
           }
         }
       }
-      const pause = CONFIG.gameplay.resultPauseDurationSec;
-      if (state.resultTimer >= pause && (!state.isWaitingForBall || state.resultTimer >= pause + 1.5)) {
-        if (state.lives <= 0) state.state = 'GAME_OVER';
-        else startNewDelivery(state);
+      const pause = CONFIG.gameplay.resultPauseDurationSec, isMilestone = state.milestonePopup?.active;
+      if (state.milestonePopup?.active) updateMilestone(state.milestonePopup, delta);
+      if (state.resultTimer >= pause && !isMilestone && (!state.isWaitingForBall || state.resultTimer >= pause + 1.5)) {
+        if (state.lives <= 0) state.state = 'GAME_OVER'; else startNewDelivery(state);
       }
       break;
     }
-
-    case 'TITLE':
-    case 'GAME_OVER': break;
+    case 'TITLE': case 'GAME_OVER': break;
   }
 }

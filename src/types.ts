@@ -127,6 +127,31 @@ export interface GameState {
   debugMode: boolean;
   selectedHitTarget: HitTargetKey;
   isPortrait: boolean;
-  poseEditorActive?: boolean;
   isWaitingForBall?: boolean;
+  poseEditorActive?: boolean;
+  milestonePopup?: MilestonePopupState | null;
+}
+
+export interface ConfettiParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  size: number;
+  rot: number;
+  vRot: number;
+  alpha: number;
+}
+
+export interface MilestonePopupState {
+  runs: number;
+  ballsFaced: number;
+  title: string;
+  tag: string;
+  subtitle: string;
+  timer: number;
+  duration: number;
+  active: boolean;
+  confetti: ConfettiParticle[];
 }

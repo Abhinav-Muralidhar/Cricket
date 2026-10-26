@@ -10,6 +10,7 @@ import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
 import { drawGameOverHUD, getStoredBestScore } from './share.ts';
 import { drawTitleHUD } from './title-hud.ts';
+import { drawMilestonePopup } from './milestone.ts';
 
 export function drawRotatePhoneOverlay(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
   ctx.save();
@@ -36,29 +37,29 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
 
   // 1. Top-left dark scoreboard pill & audio toggle
   const bestScore = Math.max(state.score, getStoredBestScore());
-  const pillX = 18, pillY = 18, pillW = 316, pillH = 44, cyPill = pillY + pillH / 2;
+  const pillX = 18, pillY = 18, pillW = 340, pillH = 44, cyPill = pillY + pillH / 2;
   ctx.fillStyle = 'rgba(26, 24, 28, 0.82)';
   ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 22); ctx.fill();
   ctx.strokeStyle = 'rgba(242, 193, 78, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
 
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
-  ctx.fillText(`RUNS ${state.score}`, pillX + 16, cyPill);
+  ctx.fillText(`RUNS ${state.score} [${state.ballCount}]`, pillX + 14, cyPill);
 
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(pillX + 88, pillY + 11); ctx.lineTo(pillX + 88, pillY + pillH - 11); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pillX + 112, pillY + 11); ctx.lineTo(pillX + 112, pillY + pillH - 11); ctx.stroke();
 
   ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#FBBF24';
-  ctx.fillText(`BEST ${bestScore}`, pillX + 100, cyPill);
+  ctx.fillText(`BEST ${bestScore}`, pillX + 122, cyPill);
 
-  ctx.beginPath(); ctx.moveTo(pillX + 172, pillY + 11); ctx.lineTo(pillX + 172, pillY + pillH - 11); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pillX + 194, pillY + 11); ctx.lineTo(pillX + 194, pillY + pillH - 11); ctx.stroke();
 
   ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
-  ctx.fillText('LIVES', pillX + 184, cyPill);
+  ctx.fillText('LIVES', pillX + 204, cyPill);
 
   for (let i = 0; i < CONFIG.gameplay.initialLives; i++) {
-    const bx = pillX + 238 + i * 20, alive = i < state.lives;
-    ctx.beginPath(); ctx.arc(bx, cyPill, 6, 0, Math.PI * 2);
+    const bx = pillX + 256 + i * 18, alive = i < state.lives;
+    ctx.beginPath(); ctx.arc(bx, cyPill, 5.5, 0, Math.PI * 2);
     ctx.fillStyle = alive ? PALETTE.ball : 'rgba(100, 100, 100, 0.35)'; ctx.fill();
     ctx.lineWidth = 1.5; ctx.strokeStyle = alive ? '#FDE68A' : 'rgba(150, 150, 150, 0.25)'; ctx.stroke();
   }
@@ -178,6 +179,9 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
       ctx.fillText('📲 Install App', ix + iw / 2, iy + ih / 2);
     }
   }
+
+  // 6. Milestone Celebration Popup
+  drawMilestonePopup(ctx, state, cam);
 
   ctx.restore();
 }

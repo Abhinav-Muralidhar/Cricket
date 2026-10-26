@@ -7,6 +7,7 @@ import { CONFIG } from './config.ts';
 import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip, resetGame } from './state.ts';
 import { handleGameOverClick, isGameOverButtonHover } from './share.ts';
 import { handleTitleClick, isTitleHover } from './title-hud.ts';
+import { dismissMilestone, triggerTestMilestone } from './milestone.ts';
 import { renderGame, computeCamera, type CameraViewport } from './render.ts';
 import { loadBackgroundImage } from './background.ts';
 import { InputManager } from './input.ts';
@@ -136,7 +137,12 @@ function initGame(): void {
       if (state.state === 'TITLE') return isTitleHover(clientX, clientY, camera);
       return isGameOverButtonHover(clientX, clientY, camera, state.state === 'GAME_OVER');
     },
+    onMilestonePointer: () => (state.milestonePopup?.active ? dismissMilestone(state) : false),
+    onMilestoneDismiss: () => (state.milestonePopup?.active ? dismissMilestone(state) : false),
+    onTestMilestone: () => triggerTestMilestone(state),
   });
+
+  (window as unknown as { testMilestone: () => void }).testMilestone = () => triggerTestMilestone(state);
 
   let lastTime = performance.now();
 

@@ -24,6 +24,9 @@ export interface InputHandlers {
   onAuthorClick?: () => void;
   onGameOverPointer?: (clientX: number, clientY: number) => boolean;
   isGameOverHover?: (clientX: number, clientY: number) => boolean;
+  onMilestonePointer?: (clientX: number, clientY: number) => boolean;
+  onMilestoneDismiss?: () => boolean;
+  onTestMilestone?: () => void;
 }
 
 export class InputManager {
@@ -56,6 +59,9 @@ export class InputManager {
           return;
         }
       }
+
+      // Milestone celebration dismissal
+      if (this.handlers.onMilestonePointer?.(clientX, clientY)) return;
 
       // Title/Game Over buttons
       if (this.handlers.onGameOverPointer?.(clientX, clientY)) {
@@ -117,6 +123,12 @@ export class InputManager {
         return;
       }
 
+      if (e.code === 'KeyC') {
+        e.preventDefault();
+        this.handlers.onTestMilestone?.();
+        return;
+      }
+
       if (inPoseEditor) {
         if (e.code === 'Tab') {
           e.preventDefault();
@@ -135,6 +147,13 @@ export class InputManager {
       if (this.handlers.onDebugKey?.(e.code)) {
         e.preventDefault();
         return;
+      }
+
+      if (e.code === 'Space' || e.code === 'Enter') {
+        if (this.handlers.onMilestoneDismiss?.()) {
+          e.preventDefault();
+          return;
+        }
       }
 
       if (e.code === 'Space') {
