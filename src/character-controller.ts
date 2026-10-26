@@ -14,18 +14,20 @@ export class CharacterController3D {
   public configScale: number;
   public yaw: number;
   public isLeftHanded: boolean;
+  public isBatter: boolean;
   private currentAction: THREE.AnimationAction | null = null;
   private onFinishedCallback: (() => void) | null = null;
 
   constructor(
     instance: LoadedCharacterInstance,
-    options: { yaw?: number; scale?: number; isLeftHanded?: boolean } = {}
+    options: { yaw?: number; scale?: number; isLeftHanded?: boolean; isBatter?: boolean } = {}
   ) {
     this.instance = instance;
     this.group = instance.group;
     this.yaw = options.yaw ?? 0;
     this.configScale = options.scale ?? 1.0;
     this.isLeftHanded = options.isLeftHanded ?? false;
+    this.isBatter = options.isBatter ?? false;
 
     this.applyTransform();
 
@@ -126,18 +128,18 @@ export class CharacterController3D {
 
   public playStance(): void {
     if (this.instance.actions.has('battingStance')) {
-      this.playClip('battingStance', { loop: true, timeScale: 0.35, crossFadeDuration: 0.15 });
+      this.playClip('battingStance', { loop: true, timeScale: 1.0, crossFadeDuration: 0.25 });
     } else {
       this.playIdle(false);
     }
   }
 
   public playIdle(randomOffset = true): void {
-    if (this.instance.actions.has('battingStance')) {
+    if (this.isBatter && this.instance.actions.has('battingStance')) {
       this.playStance();
       return;
     }
-    this.playClip('idle', { loop: true, timeScale: 1.0, crossFadeDuration: 0.2 });
+    this.playClip('idle', { loop: true, timeScale: 1.0, crossFadeDuration: 0.25 });
     if (randomOffset && this.currentAction) {
       const clip = this.currentAction.getClip();
       this.currentAction.time = Math.random() * (clip?.duration ?? 1.0);
@@ -155,7 +157,7 @@ export class CharacterController3D {
       timeScale,
       crossFadeDuration: 0.1,
       onFinished: () => {
-        this.playIdle(true);
+        this.playIdle(false);
         if (onFinished) onFinished();
       },
     });

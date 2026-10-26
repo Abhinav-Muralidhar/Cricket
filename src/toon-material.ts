@@ -181,17 +181,17 @@ export function createBatProp(): THREE.Group {
   const handleMat = createToonMaterial('#222228'); // Sleek rubber grip
   const stickerMat = createToonMaterial('#D62828'); // Red brand chevron
 
-  // Handle (slender rubber grip cylinder passing through hands)
-  const handleGeo = new THREE.CylinderGeometry(1.85, 1.85, 25, 14);
+  // Handle (slender rubber grip cylinder passing comfortably through both hands)
+  const handleGeo = new THREE.CylinderGeometry(1.85, 1.85, 40, 14);
   const handle = new THREE.Mesh(handleGeo, handleMat);
   handle.rotation.x = Math.PI / 2;
-  handle.position.set(0, 0, -5.5);
+  handle.position.set(0, 0, -14);
   batGroup.add(handle);
 
   // Top knob of handle
   const knobGeo = new THREE.SphereGeometry(2.1, 10, 8);
   const knob = new THREE.Mesh(knobGeo, handleMat);
-  knob.position.set(0, 0, -18);
+  knob.position.set(0, 0, -34);
   batGroup.add(knob);
 
   // Bat shoulders (smooth taper from handle to blade)

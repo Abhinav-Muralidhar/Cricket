@@ -74,8 +74,8 @@ export async function shareGame(state: GameState): Promise<void> {
     }
   }
   try {
-    if (navigator?.clipboard?.writeText) navigator.clipboard.writeText(text).catch(() => {});
-  } catch {}
+    if (navigator?.clipboard?.writeText) navigator.clipboard.writeText(text).catch(() => { });
+  } catch { }
   copiedToastUntil = Date.now() + 1500;
   showWhatsAppFallback = true;
 }
@@ -150,7 +150,7 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   ctx.fillText(String(state.score), midLeft, spY + 37);
 
   ctx.fillStyle = '#F59E0B'; ctx.font = 'bold 11px system-ui, sans-serif';
-  ctx.fillText('🏆 BEST SCORE', midRight, spY + 16);
+  ctx.fillText(' BEST SCORE', midRight, spY + 16);
   ctx.fillStyle = '#FDE68A'; ctx.font = '900 22px monospace';
   ctx.fillText(String(bestScore), midRight, spY + 37);
 

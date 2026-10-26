@@ -214,8 +214,8 @@ export const CONFIG: GameConfig = {
   pitchReleaseTime: 0.35,
   swingStartOffset: 0.85,
   swingTimeScale: 2.2,
-  batOffset: { x: -0.5, y: 7.5, z: 1.2 },
-  batRotation: { x: -0.2, y: 1.2, z: 0.0 },
+  batOffset: { x: 0.5, y: 5.0, z: -0.12 },
+  batRotation: { x: -3.043, y: 1.148, z: 1.073 },
   batScale: { x: 1, y: 1, z: 1 },
   characters3D: {
     batter: { yaw: Math.PI / 2, scale: 1.0, isLeftHanded: false },

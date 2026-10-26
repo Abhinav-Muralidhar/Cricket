@@ -127,7 +127,23 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
 
   const swingClip = animationClips.get('swing');
   if (swingClip) {
-    animationClips.set('battingStance', THREE.AnimationUtils.subclip(swingClip, 'battingStance', 0, 4, 30));
+    // Build a seamless breathing batting stance loop from authentic two-handed stance pose (frame 187)
+    const stanceTracks: THREE.KeyframeTrack[] = [];
+    const targetIdx = 187;
+    for (const track of swingClip.tracks) {
+      const valSize = track.getValueSize();
+      const offset = Math.min(track.values.length - valSize, targetIdx * valSize);
+      const val0 = track.values.slice(offset, offset + valSize);
+      const times = [0, 1.2, 2.4];
+      const values = new Float32Array(valSize * 3);
+      for (let k = 0; k < valSize; k++) values[k] = val0[k];
+      for (let k = 0; k < valSize; k++) values[valSize + k] = val0[k];
+      for (let k = 0; k < valSize; k++) values[valSize * 2 + k] = val0[k];
+      if (track.name.includes('Hips.position')) values[valSize + 1] += 0.35;
+      const TrackCtor = track.constructor as new (name: string, times: number[], values: Float32Array) => THREE.KeyframeTrack;
+      stanceTracks.push(new TrackCtor(track.name, times, values));
+    }
+    animationClips.set('battingStance', new THREE.AnimationClip('battingStance', 2.4, stanceTracks));
   }
 
   isLoaded = true;

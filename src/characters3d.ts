@@ -74,7 +74,7 @@ export class Characters3DManager {
     // 1. Batter (hero, with bat)
     const batterInst = instantiateCharacter(cols.batter, { withBat: true, withCap: false, modelType: 'batter' });
     const batter = new CharacterController3D(batterInst, {
-      yaw: c3d.batter.yaw, scale: c3d.batter.scale, isLeftHanded: c3d.batter.isLeftHanded,
+      yaw: c3d.batter.yaw, scale: c3d.batter.scale, isLeftHanded: c3d.batter.isLeftHanded, isBatter: true,
     });
     batter.setPosition(l.batter.x, l.batter.y, 0);
     batter.playStance();
@@ -83,7 +83,7 @@ export class Characters3DManager {
 
     // 2. Bowler (from pitch.fbx model in hoody)
     const bowlerInst = instantiateCharacter(cols.bowler, { withBat: false, withCap: false, modelType: 'bowler' });
-    const bowler = new CharacterController3D(bowlerInst, { yaw: c3d.bowler.yaw, scale: c3d.bowler.scale });
+    const bowler = new CharacterController3D(bowlerInst, { yaw: c3d.bowler.yaw, scale: c3d.bowler.scale, isBatter: false });
     bowler.setPosition(l.bowler.x, l.bowler.y, 0);
     bowler.playIdle(true);
     this.bowlerRunStartX = l.bowler.x + 35;
@@ -123,11 +123,13 @@ export class Characters3DManager {
         bowler.setPosition(curX, CONFIG.layout.bowler.y, 0);
       } else if (state.bowlerPhase === 'DELIVERY' && this.prevBowlerPhase !== 'DELIVERY') {
         bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
-        bowler?.playPitch(0.0, 1.9);
+        bowler?.playPitch(0.0, 1.9, () => {
+          bowler?.playIdle(false);
+        });
       }
     } else if (this.prevStateKind === 'BOWLING') {
       bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
-      if (bowler?.currentActionName !== 'pitch') bowler?.playIdle(true);
+      bowler?.playIdle(false);
     }
 
     // 2. Player Tap / Swing
@@ -140,13 +142,17 @@ export class Characters3DManager {
       const outcome = state.lastResult.outcome;
       if (outcome === 'MISS' || outcome === 'BOWLED') {
         batter?.playDefeated();
+        bowler?.playCheer();
       } else if (outcome === 'SIX' || outcome === 'FOUR') {
         batter?.playCheer();
+        bowler?.playIdle(false);
         f1?.playClap(); f2?.playClap(); f3?.playClap();
       } else if (outcome === 'WINDOW' || outcome === 'CAR_GLASS' || outcome === 'SCOOTER' || outcome === 'AC_UNIT' || outcome === 'NEWSPAPER') {
         batter?.playDefeated();
+        bowler?.playIdle(false);
       } else {
         batter?.playStance();
+        bowler?.playIdle(false);
       }
       this.ballRetrieval.triggerRetrieval(state, this.characters);
     }
