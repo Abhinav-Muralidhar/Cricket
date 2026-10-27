@@ -38,13 +38,33 @@ export function showMilestone(state: GameState, milestone: number, balls: number
     tag = `100 RUNS [${balls}] • TON UP`;
     subtitle = 'Ton in the gully! Windows shaken, legends born! 👑🏆';
   } else if (milestone === 150) {
-    title = '150 RUNS!';
-    tag = `150 RUNS [${balls}] • GULLY MAESTRO`;
+    title = 'GULLY MAESTRO!';
+    tag = `150 RUNS [${balls}] • ON FIRE`;
     subtitle = 'Bowlers are running for cover behind electric poles! ⚡💥';
-  } else if (milestone >= 200) {
+  } else if (milestone === 200) {
     title = 'DOUBLE CENTURY!';
-    tag = `${milestone} RUNS [${balls}] • IMMORTAL`;
+    tag = `200 RUNS [${balls}] • MASTERCLASS`;
     subtitle = 'Historic double ton! A street innings for the ages! 🌟👑';
+  } else if (milestone === 250) {
+    title = 'UNSTOPPABLE!';
+    tag = `250 RUNS [${balls}] • TERRACE CROWD`;
+    subtitle = 'The entire neighborhood is watching from rooftops! 🚀🔥';
+  } else if (milestone === 300) {
+    title = 'TRIPLE CENTURY!';
+    tag = `300 RUNS [${balls}] • GULLY BRADMAN`;
+    subtitle = 'Sachin Tendulkar in the gully! Absolutely legendary! 🐐🏆';
+  } else if (milestone === 350) {
+    title = 'UNBELIEVABLE!';
+    tag = `350 RUNS [${balls}] • BALL DESTROYER`;
+    subtitle = 'Tennis balls are disintegrating on impact! ⚡☄️';
+  } else if (milestone === 400) {
+    title = 'QUADRUPLE CENTURY!';
+    tag = `400 RUNS [${balls}] • STREET MYTH`;
+    subtitle = 'A mythical 400! Bowlers have surrendered completely! 👑🙌';
+  } else if (milestone >= 450) {
+    title = 'GOD OF CRICKET!';
+    tag = `${milestone} RUNS [${balls}] • IMMORTAL`;
+    subtitle = 'Unreachable gully greatness! Immortalized forever! 🌟👑';
   }
 
   state.milestonePopup = {
@@ -62,7 +82,9 @@ export function triggerMilestoneIfCrossed(state: GameState, prevScore: number): 
 
 export function triggerTestMilestone(state: GameState): void {
   const cur = state.milestonePopup?.active ? state.milestonePopup.runs : 0;
-  const next = cur >= 200 ? 50 : (cur >= 150 ? 200 : (cur >= 100 ? 150 : (cur >= 50 ? 100 : 50)));
+  const milestones = [50, 100, 150, 200, 250, 300, 350, 400, 500];
+  const idx = milestones.indexOf(cur);
+  const next = milestones[(idx + 1) % milestones.length];
   const balls = state.ballCount > 0 ? state.ballCount : (next === 50 ? 18 : Math.round(next * 0.44));
   showMilestone(state, next, balls);
 }

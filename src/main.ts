@@ -76,7 +76,7 @@ function initGame(): void {
       }
     },
     onDebugToggle: () => {
-      const isAllowed = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.search.includes('debug=true');
+      const isAllowed = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       if (!isAllowed) return;
       state.debugMode = !state.debugMode;
       if (state.debugMode) {
@@ -138,20 +138,17 @@ function initGame(): void {
       return isGameOverButtonHover(clientX, clientY, camera, state.state === 'GAME_OVER');
     },
     onMilestonePointer: () => (state.milestonePopup?.active ? dismissMilestone(state) : false),
-    onMilestoneDismiss: () => (state.milestonePopup?.active ? dismissMilestone(state) : false),
-    isDebugActive: () => state.debugMode,
+    isDebugActive: () => window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
     onTestMilestone: () => {
-      if (state.debugMode) triggerTestMilestone(state);
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        triggerTestMilestone(state);
+      }
     },
   });
 
-  (window as unknown as { testMilestone: () => void }).testMilestone = () => {
-    if (!state.debugMode) {
-      console.warn('[Gully Cricket] Debug mode must be active to trigger test milestone.');
-      return;
-    }
-    triggerTestMilestone(state);
-  };
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    (window as unknown as { testMilestone: () => void }).testMilestone = () => triggerTestMilestone(state);
+  }
 
   let lastTime = performance.now();
 

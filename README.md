@@ -43,7 +43,7 @@ A browser-based Indian street cricket game built with TypeScript, Canvas 2D, Thr
 | **Bowl / Bat** | Left Click / `Spacebar` | Tap Screen |
 | **Mute / Unmute Audio** | `M` key / Top-right 🔊 icon | Tap Top-right 🔊 icon |
 | **Fullscreen Toggle** | `F` key / Top-right ⛶ icon | Tap Top-right ⛶ icon |
-| **Debug Mode (Localhost)** | `D` key | `?debug=true` in URL |
+| **Debug Mode (Localhost)** | `D` key | — |
 
 ---
 
