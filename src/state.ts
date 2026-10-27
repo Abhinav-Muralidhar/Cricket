@@ -45,10 +45,7 @@ export function resetGame(state: GameState): void {
 
 export function handlePlayerSwing(state: GameState): void {
   if (state.isPortrait) return;
-  if (state.state === 'TITLE' || state.state === 'GAME_OVER') {
-    resetGame(state);
-    return;
-  }
+  if (state.state === 'TITLE' || state.state === 'GAME_OVER') return;
   if (state.state === 'RESULT') {
     if (state.lives <= 0) state.state = 'GAME_OVER';
     else startNewDelivery(state);

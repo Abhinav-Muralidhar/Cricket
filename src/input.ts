@@ -72,12 +72,10 @@ export class InputManager {
       if (this.handlers.isTitleOrGameOver?.()) {
         if (clientX >= rect.width - 125 && clientY >= rect.height - 42) {
           this.handlers.onInstallClick?.();
-          return;
-        }
-        if (clientX >= 12 && clientX <= 220 && clientY >= rect.height - 42) {
+        } else if (clientX >= 12 && clientX <= 220 && clientY >= rect.height - 42) {
           this.handlers.onAuthorClick?.();
-          return;
         }
+        return;
       }
 
       this.handlers.onAction();

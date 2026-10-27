@@ -64,19 +64,6 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     ctx.lineWidth = 1.5; ctx.strokeStyle = alive ? '#FDE68A' : 'rgba(150, 150, 150, 0.25)'; ctx.stroke();
   }
 
-  // Top-right buttons: Fullscreen (cam.cssWidth - 96) & Audio mute (cam.cssWidth - 54)
-  const sndX = cam.cssWidth - 54, fsX = cam.cssWidth - 96, btnY = 18;
-  const isFs = typeof document !== 'undefined' && !!document.fullscreenElement;
-  ctx.save();
-  ctx.fillStyle = 'rgba(30, 30, 36, 0.70)';
-  ctx.beginPath(); ctx.roundRect(fsX, btnY, 36, 36, 18); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(sndX, btnY, 36, 36, 18); ctx.fill();
-  ctx.fillStyle = '#FFFFFF'; ctx.font = '16px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(isFs ? '✕' : '⛶', fsX + 18, btnY + 18);
-  ctx.font = '16px sans-serif';
-  ctx.fillText(isAudioMuted() ? '🔇' : '🔊', sndX + 18, btnY + 18);
-  ctx.restore();
-
   // 2. Punchy center score badge & bottom CC subtitle
   if (state.lastResult && state.state === 'RESULT') {
     const res = state.lastResult;
@@ -180,7 +167,21 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     }
   }
 
-  // 6. Milestone Celebration Popup
+  // 6. Top-right utility buttons: Fullscreen & Audio mute (rendered on top of all screens)
+  const sndX = cam.cssWidth - 54, fsX = cam.cssWidth - 96, btnY = 18;
+  const isFs = typeof document !== 'undefined' && !!document.fullscreenElement;
+  ctx.save();
+  ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
+  ctx.beginPath(); ctx.roundRect(fsX, btnY, 36, 36, 18); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(sndX, btnY, 36, 36, 18); ctx.fill();
+  ctx.strokeStyle = 'rgba(242, 193, 78, 0.40)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#FFFFFF'; ctx.font = '16px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(isFs ? '✕' : '⛶', fsX + 18, btnY + 18);
+  ctx.font = '16px sans-serif';
+  ctx.fillText(isAudioMuted() ? '🔇' : '🔊', sndX + 18, btnY + 18);
+  ctx.restore();
+
+  // 7. Milestone Celebration Popup
   drawMilestonePopup(ctx, state, cam);
 
   ctx.restore();
