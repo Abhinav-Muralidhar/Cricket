@@ -1,12 +1,12 @@
 {
-  "name": "Gully Cricket: Neighborhood Chaos",
-  "short_name": "GullyCricket",
+  "name": "Gully Cricket",
+  "short_name": "Gully Cricket",
   "description": "Authentic Indian street cricket browser game with realistic physics, reactive neighborhood hazards, and 3D characters.",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "landscape",
-  "background_color": "#121218",
-  "theme_color": "#121218",
+  "background_color": "#1E1E24",
+  "theme_color": "#F2C14E",
   "categories": ["games", "sports", "entertainment"],
   "icons": [
     {

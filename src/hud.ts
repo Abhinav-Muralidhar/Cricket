@@ -5,7 +5,7 @@
 import { CONFIG, PALETTE } from './config.ts';
 import { EASINGS } from './animation.ts';
 import { isAudioMuted } from './audio.ts';
-import { isStandalonePWA } from './pwa.ts';
+import { isStandalonePWA, isIOS, getSafeAreaInsets } from './pwa.ts';
 import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
 import { drawGameOverHUD, getStoredBestScore } from './share.ts';
@@ -36,24 +36,24 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
   ctx.save();
 
   // 1. Top-left dark scoreboard pill & audio toggle
+  const insets = getSafeAreaInsets();
+  const topPad = Math.max(18, insets.top + 10), leftPad = Math.max(18, insets.left + 12);
+  const rightPad = Math.max(18, insets.right + 12), botPad = Math.max(20, insets.bottom + 12);
   const bestScore = Math.max(state.score, getStoredBestScore());
-  const pillX = 18, pillY = 18, pillW = 340, pillH = 44, cyPill = pillY + pillH / 2;
+  const pillX = leftPad, pillY = topPad, pillW = 340, pillH = 44, cyPill = pillY + pillH / 2;
   ctx.fillStyle = 'rgba(26, 24, 28, 0.82)';
   ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 22); ctx.fill();
   ctx.strokeStyle = 'rgba(242, 193, 78, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
-
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
   ctx.fillText(`RUNS ${state.score} [${state.ballCount}]`, pillX + 14, cyPill);
 
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(pillX + 112, pillY + 11); ctx.lineTo(pillX + 112, pillY + pillH - 11); ctx.stroke();
-
   ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#FBBF24';
   ctx.fillText(`BEST ${bestScore}`, pillX + 122, cyPill);
 
   ctx.beginPath(); ctx.moveTo(pillX + 194, pillY + 11); ctx.lineTo(pillX + 194, pillY + pillH - 11); ctx.stroke();
-
   ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
   ctx.fillText('LIVES', pillX + 204, cyPill);
 
@@ -154,10 +154,10 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(245, 233, 207, 0.48)';
     ctx.font = '500 12px system-ui, -apple-system, Roboto, sans-serif';
-    ctx.fillText('Developed by Abhinav M ↗', 20, cam.cssHeight - 20);
+    ctx.fillText('Developed by Abhinav M ↗', leftPad, cam.cssHeight - botPad);
 
     if (!isStandalonePWA()) {
-      const iw = 100, ih = 28, ix = cam.cssWidth - iw - 20, iy = cam.cssHeight - 34;
+      const iw = 100, ih = 28, ix = cam.cssWidth - iw - rightPad, iy = cam.cssHeight - ih - botPad;
       ctx.fillStyle = 'rgba(30, 30, 36, 0.85)';
       ctx.beginPath(); ctx.roundRect(ix, iy, iw, ih, 14); ctx.fill();
       ctx.strokeStyle = 'rgba(242, 193, 78, 0.38)'; ctx.lineWidth = 1; ctx.stroke();
@@ -167,17 +167,21 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     }
   }
 
-  // 6. Top-right utility buttons: Fullscreen & Audio mute (rendered on top of all screens)
-  const sndX = cam.cssWidth - 54, fsX = cam.cssWidth - 96, btnY = 18;
+  // 6. Top-right utility buttons: Fullscreen (non-iOS) & Audio mute (rendered on top of all screens)
+  const showFs = !isIOS();
+  const sndX = cam.cssWidth - rightPad - 36, fsX = sndX - 42, btnY = topPad;
   const isFs = typeof document !== 'undefined' && !!document.fullscreenElement;
   ctx.save();
   ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
-  ctx.beginPath(); ctx.roundRect(fsX, btnY, 36, 36, 18); ctx.fill();
+  if (showFs) {
+    ctx.beginPath(); ctx.roundRect(fsX, btnY, 36, 36, 18); ctx.fill();
+    ctx.strokeStyle = 'rgba(242, 193, 78, 0.40)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#FFFFFF'; ctx.font = '16px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(isFs ? '✕' : '⛶', fsX + 18, btnY + 18);
+  }
   ctx.beginPath(); ctx.roundRect(sndX, btnY, 36, 36, 18); ctx.fill();
   ctx.strokeStyle = 'rgba(242, 193, 78, 0.40)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = '#FFFFFF'; ctx.font = '16px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(isFs ? '✕' : '⛶', fsX + 18, btnY + 18);
-  ctx.font = '16px sans-serif';
+  ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(isAudioMuted() ? '🔇' : '🔊', sndX + 18, btnY + 18);
   ctx.restore();
 

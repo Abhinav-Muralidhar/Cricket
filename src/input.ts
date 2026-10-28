@@ -1,7 +1,4 @@
-/**
- * input.ts - Handles user taps, mouse clicks, keyboard space, debug toggles,
- * and debug rect arrow nudging.
- */
+import { getSafeAreaInsets, isIOS } from './pwa.ts';
 
 export interface InputHandlers {
   onAction: () => void;
@@ -49,13 +46,18 @@ export class InputManager {
       const clientX = e.clientX - rect.left;
       const clientY = e.clientY - rect.top;
 
-      // Top right buttons: Audio mute (rightmost) & Fullscreen (adjacent left)
-      if (clientY <= 60) {
-        if (clientX >= rect.width - 56) {
+      const insets = getSafeAreaInsets();
+      const topPad = Math.max(18, insets.top + 10), rightPad = Math.max(18, insets.right + 12);
+      const leftPad = Math.max(18, insets.left + 12), botPad = Math.max(20, insets.bottom + 12);
+      const sndX = rect.width - rightPad - 36, fsX = sndX - 42;
+
+      // Top right buttons: Audio mute & Fullscreen (non-iOS)
+      if (clientY >= topPad - 8 && clientY <= topPad + 44) {
+        if (clientX >= sndX - 8 && clientX <= sndX + 44) {
           this.handlers.onAudioToggle?.();
           return;
         }
-        if (clientX >= rect.width - 105) {
+        if (!isIOS() && clientX >= fsX - 8 && clientX <= fsX + 44) {
           this.handlers.onFullscreenToggle?.();
           return;
         }
@@ -65,14 +67,13 @@ export class InputManager {
       if (this.handlers.onMilestonePointer?.(clientX, clientY)) return;
 
       // Title/Game Over buttons
-      if (this.handlers.onGameOverPointer?.(clientX, clientY)) {
-        return;
-      }
+      if (this.handlers.onGameOverPointer?.(clientX, clientY)) return;
 
       if (this.handlers.isTitleOrGameOver?.()) {
-        if (clientX >= rect.width - 125 && clientY >= rect.height - 42) {
+        const iw = 100, ih = 28, ix = rect.width - iw - rightPad, iy = rect.height - ih - botPad;
+        if (clientX >= ix - 10 && clientX <= ix + iw + 10 && clientY >= iy - 8 && clientY <= iy + ih + 10) {
           this.handlers.onInstallClick?.();
-        } else if (clientX >= 12 && clientX <= 220 && clientY >= rect.height - 42) {
+        } else if (clientX >= leftPad - 10 && clientX <= leftPad + 220 && clientY >= rect.height - botPad - 16 && clientY <= rect.height - botPad + 16) {
           this.handlers.onAuthorClick?.();
         }
         return;
@@ -85,10 +86,14 @@ export class InputManager {
     this.canvas.addEventListener('pointermove', (e: PointerEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = e.clientX - rect.left, clientY = e.clientY - rect.top;
-      const isMute = clientX >= rect.width - 56 && clientY <= 60;
-      const isFs = clientX >= rect.width - 105 && clientX < rect.width - 56 && clientY <= 60;
-      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && clientX >= 12 && clientX <= 220 && clientY >= rect.height - 42;
-      const isInstall = !!this.handlers.isTitleOrGameOver?.() && clientX >= rect.width - 125 && clientY >= rect.height - 42;
+      const insets = getSafeAreaInsets();
+      const topPad = Math.max(18, insets.top + 10), rightPad = Math.max(18, insets.right + 12);
+      const leftPad = Math.max(18, insets.left + 12), botPad = Math.max(20, insets.bottom + 12);
+      const sndX = rect.width - rightPad - 36, fsX = sndX - 42;
+      const isMute = clientX >= sndX - 6 && clientX <= sndX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
+      const isFs = !isIOS() && clientX >= fsX - 6 && clientX <= fsX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
+      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && clientX >= leftPad - 10 && clientX <= leftPad + 200 && clientY >= rect.height - botPad - 14 && clientY <= rect.height - botPad + 14;
+      const isInstall = !!this.handlers.isTitleOrGameOver?.() && clientX >= rect.width - 100 - rightPad - 10 && clientY >= rect.height - 28 - botPad - 6;
       const isGameOverBtn = !!this.handlers.isGameOverHover?.(clientX, clientY);
       this.canvas.style.cursor = isMute || isFs || isAuthor || isInstall || isGameOverBtn ? 'pointer' : 'default';
     });
@@ -111,6 +116,7 @@ export class InputManager {
       }
 
       if (e.code === 'KeyF') {
+        if (isIOS()) return;
         e.preventDefault();
         this.handlers.onFullscreenToggle?.();
         return;

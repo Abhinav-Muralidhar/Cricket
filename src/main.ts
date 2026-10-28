@@ -17,7 +17,7 @@ import { initAudio, toggleAudioMute } from './audio.ts';
 
 import { Characters3DManager } from './characters3d.ts';
 import { inject } from '@vercel/analytics';
-import { initPWA, promptPWAInstall } from './pwa.ts';
+import { initPWA, promptPWAInstall, isIOS } from './pwa.ts';
 
 function initGame(): void {
   inject();
@@ -55,6 +55,10 @@ function initGame(): void {
 
   resize();
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => {
+    setTimeout(resize, 80);
+    setTimeout(resize, 320);
+  });
   document.addEventListener('fullscreenchange', resize);
 
   // Input manager: pointer on top hudCanvas, debug toggles, 1-9 clips, 3D nudging
@@ -69,6 +73,7 @@ function initGame(): void {
       toggleAudioMute();
     },
     onFullscreenToggle: () => {
+      if (isIOS()) return;
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {});
       } else {
