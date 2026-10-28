@@ -31,7 +31,7 @@ export function getFunnyGameOverLine(state: GameState): string {
   if (o === 'NEWSPAPER') return "Tore through Uncle's morning paper! Gully cricket banned.";
   if (o === 'BOWLED') return 'Middle stump sent flying! Clean bowled on the street.';
   if (state.score === 0) return 'Duck! Clean bowled on the first ball 😭';
-  if (state.score < 15) return 'Aunty confiscated the tennis ball!';
+  if (state.score < 15) return 'Uncle confiscated the tennis ball!';
   if (state.score < 30) return "Smashed Uncle's window and sprinted!";
   if (state.score < 50) return 'Car alarm blaring across the neighborhood!';
   return 'Certified Gully Legend!';

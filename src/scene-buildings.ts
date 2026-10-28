@@ -1,6 +1,6 @@
 /**
- * scene-buildings.ts - Renders the continuous row of 7 diverse Indian lane buildings,
- * ground-floor shops (kirana, chai tapri, pharmacy, tailor), and Aunty's distinct window.
+ * scene-buildings.ts - Renders the continuous row of 7 diverse Indian lane buildings
+ * and ground-floor shops (kirana, chai tapri, pharmacy, tailor).
  */
 
 import { CONFIG, PALETTE } from './config.ts';
@@ -34,26 +34,6 @@ function drawPlant(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   r(ctx, x - 5, y + 4, 10, 8, PALETTE.brick);
   ctx.fillStyle = PALETTE.leafGreen;
   ctx.beginPath(); ctx.arc(x, y + 2, 6, 0, Math.PI * 2); ctx.fill();
-}
-
-export function drawAuntyWindow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-  r(ctx, x - 8, y - 10, w + 16, 12, PALETTE.buildingATrim);
-  r(ctx, x, y, w, h, PALETTE.outlines);
-  // Billowing white curtains
-  ctx.fillStyle = PALETTE.roadLines;
-  ctx.strokeStyle = PALETTE.outlines;
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 28, y); ctx.lineTo(x + 18, y + h); ctx.lineTo(x, y + h); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x + w, y); ctx.lineTo(x + w - 28, y); ctx.lineTo(x + w - 18, y + h); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill(); ctx.stroke();
-  // Aunty Silhouette
-  const cx = x + w / 2;
-  ctx.fillStyle = PALETTE.outlines;
-  ctx.beginPath(); ctx.arc(cx, y + h - 60, 18, 0, Math.PI * 2); ctx.fill(); // Head
-  ctx.beginPath(); ctx.arc(cx - 12, y + h - 64, 9, 0, Math.PI * 2); ctx.fill(); // Bun
-  ctx.beginPath(); ctx.ellipse(cx, y + h - 18, 32, 32, 0, 0, Math.PI * 2); ctx.fill(); // Torso
-  ctx.strokeStyle = PALETTE.roadLines;
-  ctx.beginPath(); ctx.arc(cx + 4, y + h - 60, 5, 0, Math.PI * 2); ctx.stroke(); // Glasses
-  r(ctx, x - 10, y + h - 10, w + 20, 14, PALETTE.buildingATrim);
 }
 
 export function drawBuildingRow(ctx: CanvasRenderingContext2D): void {
@@ -91,7 +71,7 @@ export function drawBuildingRow(ctx: CanvasRenderingContext2D): void {
     r(ctx, 312, 395 + k * 16, 9, 12, k % 2 === 0 ? PALETTE.ball : PALETTE.buildingA);
   }
 
-  // B3: Aunty's Signature Building (x=340, w=290) - visually distinct on leg side
+  // B3: Residential Building (x=340, w=290) - visually distinct on leg side
   r(ctx, l.buildingA.x, l.buildingA.y, l.buildingA.width, l.buildingA.height, PALETTE.buildingA);
   r(ctx, l.buildingA.x - 6, l.buildingA.y, l.buildingA.width + 12, 16, PALETTE.buildingATrim);
   // Windows on yellow building (harmless, nothing happens here)

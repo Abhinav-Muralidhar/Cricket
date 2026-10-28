@@ -15,12 +15,11 @@ A browser-based Indian street cricket game built with TypeScript, Canvas 2D, Thr
 ### Core Features
 * **Timing-Based Batting**: Swing timing relative to the sweet spot determines whether a shot is a six, four, single, or hazard hit.
 * **Balls Faced Tracking**: The HUD and milestone cards display total balls faced alongside the current score.
-* **Milestone Overlays**: Popups appear when score crosses 50, 100, 150, and 200 runs with audio fanfare and confetti.
+* **Milestone Overlays**: Popups appear when score crosses 50, 100, 150, 200, up to 450+ with audio fanfare and confetti.
 * **3-Ball Life System**: Players start with 3 lives; hitting a hazard or getting bowled costs 1 life, and losing all 3 ends the game.
 
 ### Hazards and Targets
 * **Parked Car**: Hit on a late swing; plays glass break and car alarm audio, awards 0 runs, and deducts 1 life.
-* **Aunty's Window**: Hit on an early lofted shot; plays glass shatter audio, awards 0 runs, and deducts 1 life.
 * **AC Unit**: Hit on an early sliced drive; awards 0 runs and deducts 1 life.
 * **Newspaper Uncle**: Hit on an early pop-up to the balcony; awards 0 runs and deducts 1 life.
 * **Wicket**: Ball passes the batter and crosses the wicket line; plays stump timber clatter audio, awards 0 runs, and deducts 1 life.
