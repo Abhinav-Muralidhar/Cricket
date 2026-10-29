@@ -4,7 +4,6 @@
 
 import { CONFIG, PALETTE } from './config.ts';
 import { EASINGS } from './animation.ts';
-import { isAudioMuted } from './audio.ts';
 import { isStandalonePWA, isIOS, getSafeAreaInsets } from './pwa.ts';
 import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
@@ -155,32 +154,30 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
       ctx.strokeStyle = 'rgba(242, 193, 78, 0.38)'; ctx.lineWidth = 1; ctx.stroke();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#FFFFFF'; ctx.font = '600 11px system-ui, sans-serif';
-      ctx.fillText('📲 Install App', ix + iw / 2, iy + ih / 2);
+      ctx.fillText('Install App', ix + iw / 2, iy + ih / 2);
     }
   }
 
-  // Top-right utility buttons: Gear, Fullscreen, Audio
-  const showFs = !isIOS();
-  const sndX = cam.cssWidth - rightPad - 36, fsX = sndX - 42, gearX = showFs ? fsX - 42 : sndX - 42, btnY = topPad;
-  const isFs = typeof document !== 'undefined' && !!document.fullscreenElement;
-  ctx.save();
-  ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
-
-  // Settings Gear
-  ctx.beginPath(); ctx.roundRect(gearX, btnY, 36, 36, 18); ctx.fill();
-  ctx.strokeStyle = 'rgba(242, 193, 78, 0.40)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#FFFFFF'; ctx.fillText('⚙', gearX + 18, btnY + 18);
-
-  if (showFs) {
+  // Top-right fullscreen toggle (Title & Game Over screens only)
+  if (!isIOS() && (state.state === 'TITLE' || state.state === 'GAME_OVER')) {
+    const fsX = cam.cssWidth - rightPad - 36, btnY = topPad;
+    const isFs = typeof document !== 'undefined' && !!document.fullscreenElement;
+    ctx.save();
+    ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
     ctx.beginPath(); ctx.roundRect(fsX, btnY, 36, 36, 18); ctx.fill();
     ctx.strokeStyle = 'rgba(242, 193, 78, 0.40)'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = '#FFFFFF'; ctx.font = '16px monospace'; ctx.fillText(isFs ? '✕' : '⛶', fsX + 18, btnY + 18);
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    const m = 11;
+    if (isFs) {
+      ctx.beginPath();
+      ctx.moveTo(fsX + m, btnY + m); ctx.lineTo(fsX + 36 - m, btnY + 36 - m);
+      ctx.moveTo(fsX + 36 - m, btnY + m); ctx.lineTo(fsX + m, btnY + 36 - m);
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(fsX + m, btnY + m, 36 - m * 2, 36 - m * 2);
+    }
+    ctx.restore();
   }
-  ctx.beginPath(); ctx.roundRect(sndX, btnY, 36, 36, 18); ctx.fill();
-  ctx.strokeStyle = 'rgba(242, 193, 78, 0.40)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.font = '16px sans-serif'; ctx.fillText(isAudioMuted() ? '🔇' : '🔊', sndX + 18, btnY + 18);
-  ctx.restore();
 
   drawMilestonePopup(ctx, state, cam);
   if (state.guideActive) drawFirstTimeGuide(ctx, cam);

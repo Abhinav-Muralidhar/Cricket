@@ -129,13 +129,13 @@ export function drawTitleHUD(ctx: CanvasRenderingContext2D, cam: CameraViewport)
 
   drawGullyBadge(ctx, l.badge, cx);
 
-  drawThemedIconButton(ctx, l.playBtn, '▶', '#451A03', 26);
-  drawThemedIconButton(ctx, l.infoBtn, 'ℹ', '#451A03', 24);
-  drawThemedIconButton(ctx, l.gearBtn, '⚙', '#451A03', 24);
+  drawThemedIconButton(ctx, l.playBtn, 'play', '#451A03');
+  drawThemedIconButton(ctx, l.infoBtn, 'info', '#451A03');
+  drawThemedIconButton(ctx, l.gearBtn, 'settings', '#451A03');
 
-  ctx.fillStyle = '#94A3B8'; ctx.font = '500 12px system-ui, sans-serif';
+  ctx.fillStyle = '#94A3B8'; ctx.font = '600 12px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('Tap ▶ to Play  •  Tap ℹ for Rules  •  Tap ⚙ for Settings', cx, l.playBtn.y + l.playBtn.h + 16);
+  ctx.fillText('PLAY   •   RULES   •   SETTINGS', cx, l.playBtn.y + l.playBtn.h + 16);
 
   if (showRulesModal) {
     ctx.fillStyle = 'rgba(10, 8, 14, 0.75)';
@@ -153,7 +153,7 @@ export function drawTitleHUD(ctx: CanvasRenderingContext2D, cam: CameraViewport)
     ctx.fillText('✕', l.closeBtn.x + l.closeBtn.w / 2, l.closeBtn.y + l.closeBtn.h / 2 + 5);
 
     ctx.fillStyle = '#38BDF8'; ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.fillText('🏏 Tap screen or press Space to hit the ball!', cx, c.y + 66);
+    ctx.fillText('Tap screen or press Space to hit the ball!', cx, c.y + 66);
     ctx.fillStyle = '#CBD5E1'; ctx.font = '500 11px system-ui, sans-serif';
     ctx.fillText('Time your swing when the ball reaches the sweet spot.', cx, c.y + 84);
 
@@ -163,10 +163,10 @@ export function drawTitleHUD(ctx: CanvasRenderingContext2D, cam: CameraViewport)
     ctx.strokeStyle = 'rgba(242, 193, 78, 0.3)'; ctx.lineWidth = 1; ctx.stroke();
 
     ctx.textBaseline = 'middle'; ctx.fillStyle = '#F59E0B'; ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillText('📋 STREET RULES', cx, spY + 16);
+    ctx.fillText('STREET RULES', cx, spY + 16);
     ctx.fillStyle = '#F5E9CF'; ctx.font = '500 12px system-ui, sans-serif';
-    ctx.fillText('🚗 Hitting cars/windows loses the ball (-1 Life)', cx, spY + 36);
-    ctx.fillText('🔴 3 Lives total • Clean bowled = OUT!', cx, spY + 52);
+    ctx.fillText('Hitting cars or windows loses ball (-1 Life)', cx, spY + 36);
+    ctx.fillText('3 Lives total • Clean bowled = OUT!', cx, spY + 52);
 
     ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#94A3B8'; ctx.font = 'italic 11px system-ui, sans-serif';
     ctx.fillText('Tap anywhere to dismiss', cx, c.y + 198);

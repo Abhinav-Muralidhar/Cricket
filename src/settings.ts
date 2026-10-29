@@ -189,16 +189,25 @@ export function handleGuidePointer(clientX: number, clientY: number, cam: Camera
 export function drawAssistTag(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
   if (!state.assistEnabled || state.state !== 'BOWLING') return;
   const tagText = getAssistTagText(state.currentDeliveryType, state.currentBallSpeed);
-  ctx.save();
-  ctx.font = 'bold 12px monospace';
-  const tw = ctx.measureText(tagText).width;
-  const pw = tw + 24, ph = 26, px = cam.cssWidth / 2 - pw / 2, py = 20;
+  const bx = (state.bowlerRig.x - cam.worldLeft) * cam.scale;
+  const by = (CONFIG.layout.bowler.y - 135 - cam.worldTop) * cam.scale;
 
-  ctx.fillStyle = 'rgba(26, 24, 28, 0.90)';
-  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 13); ctx.fill();
-  ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.fillStyle = '#FDE68A'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(tagText, cam.cssWidth / 2, py + ph / 2);
+  ctx.save();
+  ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+  const tw = ctx.measureText(tagText).width;
+  const pw = tw + 20, ph = 24, px = bx - pw / 2, py = by - ph / 2;
+
+  ctx.fillStyle = 'rgba(20, 18, 24, 0.92)';
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.fill();
+  ctx.strokeStyle = 'rgba(245, 158, 11, 0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+  ctx.beginPath();
+  ctx.moveTo(bx - 4, py + ph); ctx.lineTo(bx + 4, py + ph); ctx.lineTo(bx, py + ph + 4);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = '#FEF08A'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(tagText, bx, py + ph / 2);
   ctx.restore();
 }
 

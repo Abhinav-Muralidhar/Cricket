@@ -51,13 +51,12 @@ export class InputManager {
       const insets = getSafeAreaInsets();
       const topPad = Math.max(18, insets.top + 10), rightPad = Math.max(18, insets.right + 12);
       const leftPad = Math.max(18, insets.left + 12), botPad = Math.max(20, insets.bottom + 12);
+      const isTitleOrOver = !!this.handlers.isTitleOrGameOver?.();
       const showFs = !isIOS();
-      const sndX = rect.width - rightPad - 36, fsX = sndX - 42, gearX = showFs ? fsX - 42 : sndX - 42;
+      const fsX = rect.width - rightPad - 36;
 
-      if (clientY >= topPad - 8 && clientY <= topPad + 44) {
-        if (clientX >= gearX - 8 && clientX <= gearX + 44) { this.handlers.onSettingsToggle?.(); return; }
-        if (clientX >= sndX - 8 && clientX <= sndX + 44) { this.handlers.onAudioToggle?.(); return; }
-        if (showFs && clientX >= fsX - 8 && clientX <= fsX + 44) { this.handlers.onFullscreenToggle?.(); return; }
+      if (isTitleOrOver && showFs && clientY >= topPad - 8 && clientY <= topPad + 44) {
+        if (clientX >= fsX - 8 && clientX <= fsX + 44) { this.handlers.onFullscreenToggle?.(); return; }
       }
 
       if (this.handlers.onGuidePointer?.(clientX, clientY)) return;
@@ -84,19 +83,18 @@ export class InputManager {
       const insets = getSafeAreaInsets();
       const topPad = Math.max(18, insets.top + 10), rightPad = Math.max(18, insets.right + 12);
       const leftPad = Math.max(18, insets.left + 12), botPad = Math.max(20, insets.bottom + 12);
+      const isTitleOrOver = !!this.handlers.isTitleOrGameOver?.();
       const showFs = !isIOS();
-      const sndX = rect.width - rightPad - 36, fsX = sndX - 42, gearX = showFs ? fsX - 42 : sndX - 42;
+      const fsX = rect.width - rightPad - 36;
 
-      const isGear = clientX >= gearX - 6 && clientX <= gearX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
-      const isMute = clientX >= sndX - 6 && clientX <= sndX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
-      const isFs = showFs && clientX >= fsX - 6 && clientX <= fsX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
-      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && clientX >= leftPad - 10 && clientX <= leftPad + 200 && clientY >= rect.height - botPad - 14;
-      const isInstall = !!this.handlers.isTitleOrGameOver?.() && clientX >= rect.width - 100 - rightPad - 10 && clientY >= rect.height - 28 - botPad - 6;
+      const isFs = isTitleOrOver && showFs && clientX >= fsX - 6 && clientX <= fsX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
+      const isAuthor = isTitleOrOver && clientX >= leftPad - 10 && clientX <= leftPad + 200 && clientY >= rect.height - botPad - 14;
+      const isInstall = isTitleOrOver && clientX >= rect.width - 100 - rightPad - 10 && clientY >= rect.height - 28 - botPad - 6;
       const isOver = !!this.handlers.isGameOverHover?.(clientX, clientY);
       const isSet = !!this.handlers.isSettingsHover?.(clientX, clientY);
       const isGd = !!this.handlers.isGuideHover?.(clientX, clientY);
 
-      this.canvas.style.cursor = isGear || isMute || isFs || isAuthor || isInstall || isOver || isSet || isGd ? 'pointer' : 'default';
+      this.canvas.style.cursor = isFs || isAuthor || isInstall || isOver || isSet || isGd ? 'pointer' : 'default';
     });
 
     this.canvas.addEventListener('contextmenu', (e: MouseEvent) => e.preventDefault());
