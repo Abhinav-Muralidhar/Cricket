@@ -10,7 +10,7 @@ if (titleCharsImg) titleCharsImg.src = '/title-chars.png';
 let showRulesModal = false;
 
 export function getTitleLayout(camWidth: number, camHeight: number): {
-  chars: ButtonRect; badge: ButtonRect; playBtn: ButtonRect; infoBtn: ButtonRect; card: ButtonRect; closeBtn: ButtonRect;
+  chars: ButtonRect; badge: ButtonRect; playBtn: ButtonRect; infoBtn: ButtonRect; gearBtn: ButtonRect; card: ButtonRect; closeBtn: ButtonRect;
 } {
   const cx = camWidth / 2, cy = camHeight / 2;
   const isBig = camHeight >= 500 && camWidth >= 760;
@@ -26,8 +26,11 @@ export function getTitleLayout(camWidth: number, camHeight: number): {
   const badgeX = cx - badgeW / 2, badgeY = charsY + charsH - (isBig ? 28 : 22);
 
   const btnSize = isBig ? 58 : 52, gap = 16, btnY = badgeY + badgeH + (isBig ? 15 : 12);
-  const playBtn: ButtonRect = { x: cx - btnSize - gap / 2, y: btnY, w: btnSize, h: btnSize };
-  const infoBtn: ButtonRect = { x: cx + gap / 2, y: btnY, w: btnSize, h: btnSize };
+  const totalW = btnSize * 3 + gap * 2;
+  const startX = cx - totalW / 2;
+  const playBtn: ButtonRect = { x: startX, y: btnY, w: btnSize, h: btnSize };
+  const infoBtn: ButtonRect = { x: startX + btnSize + gap, y: btnY, w: btnSize, h: btnSize };
+  const gearBtn: ButtonRect = { x: startX + (btnSize + gap) * 2, y: btnY, w: btnSize, h: btnSize };
 
   const cardW = Math.min(360, camWidth - 24), cardH = 220;
   const cardX = cx - cardW / 2, cardY = cy - cardH / 2;
@@ -36,13 +39,13 @@ export function getTitleLayout(camWidth: number, camHeight: number): {
   return {
     chars: { x: charsX, y: charsY, w: charsW, h: charsH },
     badge: { x: badgeX, y: badgeY, w: badgeW, h: badgeH },
-    playBtn, infoBtn,
+    playBtn, infoBtn, gearBtn,
     card: { x: cardX, y: cardY, w: cardW, h: cardH }, closeBtn,
   };
 }
 
 export function handleTitleClick(
-  clientX: number, clientY: number, cam: CameraViewport, onStart: () => void
+  clientX: number, clientY: number, cam: CameraViewport, onStart: () => void, onOpenSettings?: () => void
 ): boolean {
   const tl = getTitleLayout(cam.cssWidth, cam.cssHeight);
   const inR = (r: ButtonRect) => clientX >= r.x && clientX <= r.x + r.w && clientY >= r.y && clientY <= r.y + r.h;
@@ -52,6 +55,7 @@ export function handleTitleClick(
     return true;
   }
   if (inR(tl.infoBtn)) { showRulesModal = true; return true; }
+  if (inR(tl.gearBtn)) { onOpenSettings?.(); return true; }
   if (inR(tl.playBtn)) { onStart(); return true; }
   return false;
 }
@@ -60,11 +64,10 @@ export function isTitleHover(clientX: number, clientY: number, cam: CameraViewpo
   const tl = getTitleLayout(cam.cssWidth, cam.cssHeight);
   const inR = (r: ButtonRect) => clientX >= r.x && clientX <= r.x + r.w && clientY >= r.y && clientY <= r.y + r.h;
   if (showRulesModal) return inR(tl.closeBtn);
-  return inR(tl.playBtn) || inR(tl.infoBtn);
+  return inR(tl.playBtn) || inR(tl.infoBtn) || inR(tl.gearBtn);
 }
 
 export function drawGullyBadge(ctx: CanvasRenderingContext2D, b: ButtonRect, cx: number): void {
-  // 1. Drop shadow & rustic wood frame with bevel
   ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   ctx.beginPath(); ctx.roundRect(b.x - 2, b.y + 2, b.w + 4, b.h + 4, 16); ctx.fill();
 
@@ -73,31 +76,26 @@ export function drawGullyBadge(ctx: CanvasRenderingContext2D, b: ButtonRect, cx:
   ctx.fillStyle = '#C98F2B';
   ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 12); ctx.fill();
 
-  // 2. Corrugated street-teal inner plate with vertical texture ribs
   const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
   grad.addColorStop(0, '#0284C7'); grad.addColorStop(1, '#075985');
   ctx.fillStyle = grad;
   ctx.beginPath(); ctx.roundRect(b.x + 3, b.y + 3, b.w - 6, b.h - 6, 10); ctx.fill();
   ctx.strokeStyle = '#38BDF8'; ctx.lineWidth = 1; ctx.stroke();
 
-  // Vertical corrugated ribs (soft subtle texture)
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)'; ctx.lineWidth = 1;
   for (let rx = b.x + 18; rx < b.x + b.w - 12; rx += 14) {
     ctx.beginPath(); ctx.moveTo(rx, b.y + 6); ctx.lineTo(rx, b.y + b.h - 18); ctx.stroke();
   }
 
-  // Corner brass studs
   const studs = [[b.x + 8, b.y + 8], [b.x + b.w - 8, b.y + 8], [b.x + 8, b.y + b.h - 8], [b.x + b.w - 8, b.y + b.h - 8]];
   ctx.fillStyle = '#FDE68A';
   for (const [sx, sy] of studs) {
     ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fill();
   }
 
-  // 3. Proportional typography scaling for single-line GULLY CRICKET
   const sc = b.h / 64;
   const ribSz = Math.max(8, Math.round(8.5 * sc));
   const rh = Math.round(16 * sc), rw = b.w - 36, rx = cx - rw / 2, ry = b.y + b.h - rh / 2 - 4;
-
   const titleSz = Math.min(26, Math.max(17, Math.round(22 * sc * Math.min(1, (b.w - 28) / 230))));
   ctx.font = `900 ${titleSz}px system-ui, -apple-system, sans-serif`;
   ctx.textBaseline = 'middle';
@@ -106,56 +104,39 @@ export function drawGullyBadge(ctx: CanvasRenderingContext2D, b: ButtonRect, cx:
   const startX = cx - (gullyW + cktW) / 2;
   const titleY = b.y + b.h / 2 - 2;
 
-  // 3D Embossed GULLY (Vibrant Gold)
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#451A03';
-  ctx.fillText('GULLY', startX, titleY + 2);
-  ctx.fillStyle = '#FBBF24';
-  ctx.fillText('GULLY', startX, titleY);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#451A03'; ctx.fillText('GULLY', startX, titleY + 2);
+  ctx.fillStyle = '#FBBF24'; ctx.fillText('GULLY', startX, titleY);
 
-  // 3D Embossed CRICKET (Crisp White)
   const cktX = startX + gullyW;
-  ctx.fillStyle = '#0F172A';
-  ctx.fillText('CRICKET', cktX, titleY + 2);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText('CRICKET', cktX, titleY);
+  ctx.fillStyle = '#0F172A'; ctx.fillText('CRICKET', cktX, titleY + 2);
+  ctx.fillStyle = '#FFFFFF'; ctx.fillText('CRICKET', cktX, titleY);
 
-  // 4. Crimson Ribbon Banner with gold star tracking
-  ctx.fillStyle = '#991B1B';
-  ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, 4); ctx.fill();
+  ctx.fillStyle = '#991B1B'; ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, 4); ctx.fill();
   ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 1; ctx.stroke();
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#FEF08A'; ctx.font = `bold ${ribSz}px monospace`;
+  ctx.textAlign = 'center'; ctx.fillStyle = '#FEF08A'; ctx.font = `bold ${ribSz}px monospace`;
   ctx.fillText('★ NEIGHBORHOOD CHAOS ★', cx, ry + rh / 2);
 }
 
 export function drawTitleHUD(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
-  // 1. Sleek, clean dark cinematic backdrop over the gameplay scene
   ctx.fillStyle = 'rgba(16, 14, 20, 0.78)';
   ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
-
   const l = getTitleLayout(cam.cssWidth, cam.cssHeight), cx = cam.cssWidth / 2;
 
-  // 2. Extracted character cutout
   if (titleCharsImg && titleCharsImg.complete && titleCharsImg.naturalWidth > 0) {
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(titleCharsImg, l.chars.x, l.chars.y, l.chars.w, l.chars.h);
   }
 
-  // 3. Handcrafted Gully Cricket emblem badge
   drawGullyBadge(ctx, l.badge, cx);
 
-  // 4. Tactile gamified arcade Play [▶] & Rules [ℹ] buttons
   drawThemedIconButton(ctx, l.playBtn, '▶', '#451A03', 26);
   drawThemedIconButton(ctx, l.infoBtn, 'ℹ', '#451A03', 24);
+  drawThemedIconButton(ctx, l.gearBtn, '⚙', '#451A03', 24);
 
-  // Micro instruction prompt
   ctx.fillStyle = '#94A3B8'; ctx.font = '500 12px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('Tap ▶ to Play  •  Tap ℹ for Rules', cx, l.playBtn.y + l.playBtn.h + 16);
+  ctx.fillText('Tap ▶ to Play  •  Tap ℹ for Rules  •  Tap ⚙ for Settings', cx, l.playBtn.y + l.playBtn.h + 16);
 
-  // 5. Dedicated rules popup modal card if active
   if (showRulesModal) {
     ctx.fillStyle = 'rgba(10, 8, 14, 0.75)';
     ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);

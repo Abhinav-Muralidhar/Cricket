@@ -6,6 +6,7 @@ import { CONFIG, PALETTE } from './config.ts';
 import { Animator } from './animation.ts';
 import { BATTER_CLIPS, BOWLER_CLIPS, FIELDER_CLIPS } from './poses.ts';
 import type { GameState, CharacterRig, CharacterVariant, RigPart } from './types.ts';
+import { getStoredAssist } from './settings.ts';
 
 export function createRig(
   x: number,
@@ -54,6 +55,13 @@ export function createInitialState(): GameState {
     lives: CONFIG.gameplay.initialLives,
     ballCount: 0,
     currentBallSpeed: CONFIG.ball.baseSpeed,
+    effectiveSweetSpotX: l.sweetSpot.x,
+    currentDeliveryType: 'NORMAL',
+    recentDeliveries: [],
+    gameSeed: Math.floor(Math.random() * 1000000),
+    settingsOpen: false,
+    guideActive: false,
+    assistEnabled: getStoredAssist(),
     ball: {
       x: l.bowler.x + CONFIG.ball.releaseOffsetX,
       y: l.bowler.y + CONFIG.ball.releaseOffsetY,

@@ -15,6 +15,11 @@ export interface InputHandlers {
   onNudge3DCharacter?: (dx: number, dy: number, dYaw: number) => void;
   onAudioToggle?: () => void;
   onFullscreenToggle?: () => void;
+  onSettingsToggle?: () => void;
+  onSettingsPointer?: (clientX: number, clientY: number) => boolean;
+  isSettingsHover?: (clientX: number, clientY: number) => boolean;
+  onGuidePointer?: (clientX: number, clientY: number) => boolean;
+  isGuideHover?: (clientX: number, clientY: number) => boolean;
   onInstallClick?: () => void;
   is3DMode?: () => boolean;
   isTitleOrGameOver?: () => boolean;
@@ -38,35 +43,26 @@ export class InputManager {
   }
 
   private setupListeners(): void {
-    // 1. Pointer input (Mouse click / Mobile touch)
     this.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       if (this.handlers.isPoseEditorActive?.()) return;
 
       const rect = this.canvas.getBoundingClientRect();
-      const clientX = e.clientX - rect.left;
-      const clientY = e.clientY - rect.top;
-
+      const clientX = e.clientX - rect.left, clientY = e.clientY - rect.top;
       const insets = getSafeAreaInsets();
       const topPad = Math.max(18, insets.top + 10), rightPad = Math.max(18, insets.right + 12);
       const leftPad = Math.max(18, insets.left + 12), botPad = Math.max(20, insets.bottom + 12);
-      const sndX = rect.width - rightPad - 36, fsX = sndX - 42;
+      const showFs = !isIOS();
+      const sndX = rect.width - rightPad - 36, fsX = sndX - 42, gearX = showFs ? fsX - 42 : sndX - 42;
 
-      // Top right buttons: Audio mute & Fullscreen (non-iOS)
       if (clientY >= topPad - 8 && clientY <= topPad + 44) {
-        if (clientX >= sndX - 8 && clientX <= sndX + 44) {
-          this.handlers.onAudioToggle?.();
-          return;
-        }
-        if (!isIOS() && clientX >= fsX - 8 && clientX <= fsX + 44) {
-          this.handlers.onFullscreenToggle?.();
-          return;
-        }
+        if (clientX >= gearX - 8 && clientX <= gearX + 44) { this.handlers.onSettingsToggle?.(); return; }
+        if (clientX >= sndX - 8 && clientX <= sndX + 44) { this.handlers.onAudioToggle?.(); return; }
+        if (showFs && clientX >= fsX - 8 && clientX <= fsX + 44) { this.handlers.onFullscreenToggle?.(); return; }
       }
 
-      // Milestone celebration dismissal
+      if (this.handlers.onGuidePointer?.(clientX, clientY)) return;
+      if (this.handlers.onSettingsPointer?.(clientX, clientY)) return;
       if (this.handlers.onMilestonePointer?.(clientX, clientY)) return;
-
-      // Title/Game Over buttons
       if (this.handlers.onGameOverPointer?.(clientX, clientY)) return;
 
       if (this.handlers.isTitleOrGameOver?.()) {
@@ -82,102 +78,57 @@ export class InputManager {
       this.handlers.onAction();
     });
 
-    // Pointer hover effect for clickable HUD elements
     this.canvas.addEventListener('pointermove', (e: PointerEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = e.clientX - rect.left, clientY = e.clientY - rect.top;
       const insets = getSafeAreaInsets();
       const topPad = Math.max(18, insets.top + 10), rightPad = Math.max(18, insets.right + 12);
       const leftPad = Math.max(18, insets.left + 12), botPad = Math.max(20, insets.bottom + 12);
-      const sndX = rect.width - rightPad - 36, fsX = sndX - 42;
+      const showFs = !isIOS();
+      const sndX = rect.width - rightPad - 36, fsX = sndX - 42, gearX = showFs ? fsX - 42 : sndX - 42;
+
+      const isGear = clientX >= gearX - 6 && clientX <= gearX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
       const isMute = clientX >= sndX - 6 && clientX <= sndX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
-      const isFs = !isIOS() && clientX >= fsX - 6 && clientX <= fsX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
-      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && clientX >= leftPad - 10 && clientX <= leftPad + 200 && clientY >= rect.height - botPad - 14 && clientY <= rect.height - botPad + 14;
+      const isFs = showFs && clientX >= fsX - 6 && clientX <= fsX + 42 && clientY >= topPad - 6 && clientY <= topPad + 42;
+      const isAuthor = !!this.handlers.isTitleOrGameOver?.() && clientX >= leftPad - 10 && clientX <= leftPad + 200 && clientY >= rect.height - botPad - 14;
       const isInstall = !!this.handlers.isTitleOrGameOver?.() && clientX >= rect.width - 100 - rightPad - 10 && clientY >= rect.height - 28 - botPad - 6;
-      const isGameOverBtn = !!this.handlers.isGameOverHover?.(clientX, clientY);
-      this.canvas.style.cursor = isMute || isFs || isAuthor || isInstall || isGameOverBtn ? 'pointer' : 'default';
+      const isOver = !!this.handlers.isGameOverHover?.(clientX, clientY);
+      const isSet = !!this.handlers.isSettingsHover?.(clientX, clientY);
+      const isGd = !!this.handlers.isGuideHover?.(clientX, clientY);
+
+      this.canvas.style.cursor = isGear || isMute || isFs || isAuthor || isInstall || isOver || isSet || isGd ? 'pointer' : 'default';
     });
 
-    this.canvas.addEventListener('contextmenu', (e: MouseEvent) => {
-      e.preventDefault();
-    });
+    this.canvas.addEventListener('contextmenu', (e: MouseEvent) => e.preventDefault());
 
-    // 2. Keyboard input
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-
       const inPoseEditor = !!this.handlers.isPoseEditorActive?.();
 
-      if (e.code === 'KeyM') {
-        e.preventDefault();
-        this.handlers.onAudioToggle?.();
-        return;
-      }
-
-      if (e.code === 'KeyF') {
-        if (isIOS()) return;
-        e.preventDefault();
-        this.handlers.onFullscreenToggle?.();
-        return;
-      }
-
-      if (e.code === 'KeyE') {
-        e.preventDefault();
-        this.handlers.onTogglePoseEditor?.();
-        return;
-      }
-
-      if (e.code === 'KeyC') {
-        if (!this.handlers.isDebugActive?.()) return;
-        e.preventDefault();
-        this.handlers.onTestMilestone?.();
-        return;
-      }
+      if (e.code === 'KeyM') { e.preventDefault(); this.handlers.onAudioToggle?.(); return; }
+      if (e.code === 'KeyF') { if (isIOS()) return; e.preventDefault(); this.handlers.onFullscreenToggle?.(); return; }
+      if (e.code === 'KeyE') { e.preventDefault(); this.handlers.onTogglePoseEditor?.(); return; }
+      if (e.code === 'KeyC') { if (!this.handlers.isDebugActive?.()) return; e.preventDefault(); this.handlers.onTestMilestone?.(); return; }
 
       if (inPoseEditor) {
-        if (e.code === 'Tab') {
-          e.preventDefault();
-          this.handlers.onCycleEditorCharacter?.();
-        } else if (e.code === 'ArrowLeft') {
-          e.preventDefault();
-          this.handlers.onStepKeyframe?.(-1);
-        } else if (e.code === 'ArrowRight') {
-          e.preventDefault();
-          this.handlers.onStepKeyframe?.(1);
-        }
+        if (e.code === 'Tab') { e.preventDefault(); this.handlers.onCycleEditorCharacter?.(); }
+        else if (e.code === 'ArrowLeft') { e.preventDefault(); this.handlers.onStepKeyframe?.(-1); }
+        else if (e.code === 'ArrowRight') { e.preventDefault(); this.handlers.onStepKeyframe?.(1); }
         return;
       }
 
-      // Check 1-9 debug clip keys
-      if (this.handlers.onDebugKey?.(e.code)) {
-        e.preventDefault();
-        return;
-      }
-
+      if (this.handlers.onDebugKey?.(e.code)) { e.preventDefault(); return; }
       if (e.code === 'Space' || e.code === 'Enter') {
-        if (this.handlers.onMilestoneDismiss?.()) {
-          e.preventDefault();
-          return;
-        }
+        if (this.handlers.onMilestoneDismiss?.()) { e.preventDefault(); return; }
       }
-
-      if (e.code === 'Space') {
+      if (e.code === 'Space') { e.preventDefault(); this.handlers.onAction(); }
+      else if (e.code === 'KeyD') { e.preventDefault(); this.handlers.onDebugToggle(); }
+      else if (e.code === 'KeyP') { e.preventDefault(); this.handlers.onPreviewToggle(); }
+      else if (e.code === 'Tab' || e.code === 'KeyT') {
         e.preventDefault();
-        this.handlers.onAction();
-      } else if (e.code === 'KeyD') {
-        e.preventDefault();
-        this.handlers.onDebugToggle();
-      } else if (e.code === 'KeyP') {
-        e.preventDefault();
-        this.handlers.onPreviewToggle();
-      } else if (e.code === 'Tab' || e.code === 'KeyT') {
-        e.preventDefault();
-        if (this.handlers.is3DMode?.() && this.handlers.onCycle3DCharacter) {
-          this.handlers.onCycle3DCharacter();
-        } else if (this.handlers.onCycleTarget) {
-          this.handlers.onCycleTarget();
-        }
+        if (this.handlers.is3DMode?.() && this.handlers.onCycle3DCharacter) this.handlers.onCycle3DCharacter();
+        else if (this.handlers.onCycleTarget) this.handlers.onCycleTarget();
       } else if (e.code.startsWith('Arrow')) {
         e.preventDefault();
         const step = e.shiftKey ? 5 : 1;
@@ -187,24 +138,18 @@ export class InputManager {
             if (e.code === 'ArrowLeft') dYaw = -0.05 * step;
             else if (e.code === 'ArrowRight') dYaw = 0.05 * step;
           } else {
-            if (e.code === 'ArrowLeft') dx = -2 * step;
-            else if (e.code === 'ArrowRight') dx = 2 * step;
-            else if (e.code === 'ArrowUp') dy = -2 * step;
-            else if (e.code === 'ArrowDown') dy = 2 * step;
+            if (e.code === 'ArrowLeft') dx = -2 * step; else if (e.code === 'ArrowRight') dx = 2 * step;
+            else if (e.code === 'ArrowUp') dy = -2 * step; else if (e.code === 'ArrowDown') dy = 2 * step;
           }
           this.handlers.onNudge3DCharacter(dx, dy, dYaw);
         } else if (this.handlers.onNudgeTarget) {
           let dx = 0, dy = 0, dw = 0, dh = 0;
           if (e.altKey) {
-            if (e.code === 'ArrowLeft') dw = -step;
-            else if (e.code === 'ArrowRight') dw = step;
-            else if (e.code === 'ArrowUp') dh = -step;
-            else if (e.code === 'ArrowDown') dh = step;
+            if (e.code === 'ArrowLeft') dw = -step; else if (e.code === 'ArrowRight') dw = step;
+            else if (e.code === 'ArrowUp') dh = -step; else if (e.code === 'ArrowDown') dh = step;
           } else {
-            if (e.code === 'ArrowLeft') dx = -step;
-            else if (e.code === 'ArrowRight') dx = step;
-            else if (e.code === 'ArrowUp') dy = -step;
-            else if (e.code === 'ArrowDown') dy = step;
+            if (e.code === 'ArrowLeft') dx = -step; else if (e.code === 'ArrowRight') dx = step;
+            else if (e.code === 'ArrowUp') dy = -step; else if (e.code === 'ArrowDown') dy = step;
           }
           this.handlers.onNudgeTarget(dx, dy, dw, dh);
         }

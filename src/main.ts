@@ -14,6 +14,7 @@ import { InputManager } from './input.ts';
 import { PoseEditor } from './pose-editor.ts';
 import type { HitTargetKey } from './types.ts';
 import { initAudio, toggleAudioMute } from './audio.ts';
+import { handleSettingsPointer, handleGuidePointer, getSettingsLayout } from './settings.ts';
 
 import { Characters3DManager } from './characters3d.ts';
 import { inject } from '@vercel/analytics';
@@ -31,7 +32,6 @@ function initGame(): void {
   const hudCtx = hudCanvas.getContext('2d');
   if (!bgCtx || !hudCtx) throw new Error('Unable to obtain 2D canvas context');
 
-  // Preload illustrated background image and instantiate 3D characters
   loadBackgroundImage();
   const characters3D = new Characters3DManager(threeCanvas);
 
@@ -61,9 +61,9 @@ function initGame(): void {
   });
   document.addEventListener('fullscreenchange', resize);
 
-  // Input manager: pointer on top hudCanvas, debug toggles, 1-9 clips, 3D nudging
   new InputManager(hudCanvas, {
     onAction: () => {
+      if (state.settingsOpen || state.guideActive) return;
       if (CONFIG.use3DCharacters && !characters3D.isReady) return;
       initAudio();
       handlePlayerSwing(state);
@@ -74,11 +74,25 @@ function initGame(): void {
     },
     onFullscreenToggle: () => {
       if (isIOS()) return;
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      else document.exitFullscreen().catch(() => {});
+    },
+    onSettingsToggle: () => {
+      state.settingsOpen = !state.settingsOpen;
+    },
+    onSettingsPointer: (cx, cy) => handleSettingsPointer(cx, cy, camera, state),
+    isSettingsHover: (cx, cy) => {
+      if (!state.settingsOpen) return false;
+      const l = getSettingsLayout(camera.cssWidth, camera.cssHeight);
+      const inR = (r: { x: number; y: number; w: number; h: number }) => cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
+      return inR(l.closeBtn) || inR(l.assistToggle) || inR(l.soundToggle);
+    },
+    onGuidePointer: (cx, cy) => handleGuidePointer(cx, cy, camera, state),
+    isGuideHover: (cx, cy) => {
+      if (!state.guideActive) return false;
+      const midX = camera.cssWidth / 2, midY = camera.cssHeight / 2, btnW = 120, btnH = 38;
+      const btnX = midX - btnW / 2, btnY = midY - 93 + 124;
+      return cx >= btnX && cx <= btnX + btnW && cy >= btnY && cy <= btnY + btnH;
     },
     onDebugToggle: () => {
       const isAllowed = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -86,7 +100,6 @@ function initGame(): void {
       state.debugMode = !state.debugMode;
       if (state.debugMode) {
         console.log(`[DEBUG MODE ON] Selected: ${characters3D.selectedDebugChar.toUpperCase()}`);
-        console.log('Press 1-9 to test 3D clips on batter. Tab to cycle characters. Arrow keys to nudge (Alt: yaw). E for 2D pose editor.');
       }
     },
     onPreviewToggle: () => cycleBatterPreviewClip(state),
@@ -95,23 +108,16 @@ function initGame(): void {
       const targets: HitTargetKey[] = ['window', 'acUnit', 'newspaper', 'car', 'scooter'];
       const idx = targets.indexOf(state.selectedHitTarget);
       state.selectedHitTarget = targets[(idx + 1) % targets.length];
-      const r = CONFIG.layout[state.selectedHitTarget];
-      console.log(`[DEBUG] Selected target: ${state.selectedHitTarget.toUpperCase()} -> { x: ${r.x}, y: ${r.y}, width: ${r.width}, height: ${r.height} }`);
     },
-    onNudgeTarget: (dx: number, dy: number, dw: number, dh: number) => {
+    onNudgeTarget: (dx, dy, dw, dh) => {
       if (!state.debugMode) return;
       const rect = CONFIG.layout[state.selectedHitTarget];
-      rect.x += dx;
-      rect.y += dy;
+      rect.x += dx; rect.y += dy;
       rect.width = Math.max(10, rect.width + dw);
       rect.height = Math.max(10, rect.height + dh);
-      console.log(`${state.selectedHitTarget}: { x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height} }`);
     },
     onTogglePoseEditor: () => {
-      if (!state.debugMode && !poseEditor.isOpen()) {
-        console.log('[DEBUG] Press D to enable debug mode first, then E to open the pose editor.');
-        return;
-      }
+      if (!state.debugMode && !poseEditor.isOpen()) return;
       poseEditor.toggle();
     },
     onCycleEditorCharacter: () => poseEditor.cycleCharacter(),
@@ -122,21 +128,13 @@ function initGame(): void {
     onNudge3DCharacter: (dx, dy, dYaw) => characters3D.nudgeDebugCharacter(dx, dy, dYaw),
     is3DMode: () => state.debugMode && CONFIG.use3DCharacters,
     isTitleOrGameOver: () => state.state === 'TITLE' || state.state === 'GAME_OVER' || (CONFIG.use3DCharacters && !characters3D.isReady),
-    onAuthorClick: () => {
-      window.open('https://github.com/Abhinav-Muralidhar', '_blank', 'noopener,noreferrer');
-    },
-    onInstallClick: () => {
-      promptPWAInstall();
-    },
+    onAuthorClick: () => window.open('https://github.com/Abhinav-Muralidhar', '_blank', 'noopener,noreferrer'),
+    onInstallClick: () => promptPWAInstall(),
     onGameOverPointer: (clientX: number, clientY: number) => {
       if (state.state === 'TITLE') {
-        return handleTitleClick(clientX, clientY, camera, () => {
-          resetGame(state);
-        });
+        return handleTitleClick(clientX, clientY, camera, () => resetGame(state), () => { state.settingsOpen = true; });
       }
-      return handleGameOverClick(clientX, clientY, camera, state, () => {
-        resetGame(state);
-      });
+      return handleGameOverClick(clientX, clientY, camera, state, () => resetGame(state), () => { state.settingsOpen = true; });
     },
     isGameOverHover: (clientX: number, clientY: number) => {
       if (state.state === 'TITLE') return isTitleHover(clientX, clientY, camera);
@@ -165,12 +163,8 @@ function initGame(): void {
       poseEditor.update(dt);
       poseEditor.render(hudCtx!, camera);
     } else {
-      if (!CONFIG.use3DCharacters || characters3D.isReady) {
-        updateGame(state, dt);
-      }
-      if (CONFIG.use3DCharacters) {
-        characters3D.update(dt, state);
-      }
+      if (!CONFIG.use3DCharacters || characters3D.isReady) updateGame(state, dt);
+      if (CONFIG.use3DCharacters) characters3D.update(dt, state);
       renderGame(bgCtx!, hudCtx!, state, camera, characters3D);
     }
 

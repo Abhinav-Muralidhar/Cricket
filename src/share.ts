@@ -3,6 +3,7 @@
  */
 import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
+import { isAssistHintShown, setAssistHintShown } from './settings.ts';
 
 const BEST_SCORE_KEY = 'gully_cricket_best_score';
 let showWhatsAppFallback = false;
@@ -40,16 +41,17 @@ export function getFunnyGameOverLine(state: GameState): string {
 export interface ButtonRect { x: number; y: number; w: number; h: number; }
 
 export function getGameOverLayout(camWidth: number, camHeight: number): {
-  card: ButtonRect; playAgain: ButtonRect; share: ButtonRect; whatsapp?: ButtonRect;
+  card: ButtonRect; playAgain: ButtonRect; share: ButtonRect; gear: ButtonRect; whatsapp?: ButtonRect;
 } {
   const cx = camWidth / 2, cy = camHeight / 2;
   const cardW = Math.min(380, camWidth - 32), cardH = 226, cardX = cx - cardW / 2, cardY = cy - cardH / 2 - 8;
   const btnSize = 58, gap = 20;
+  const gear: ButtonRect = { x: cardX + cardW - 36, y: cardY + 12, w: 24, h: 24 };
 
   if (showWhatsAppFallback) {
     const totalW = btnSize * 3 + gap * 2, startX = cx - totalW / 2;
     return {
-      card: { x: cardX, y: cardY, w: cardW, h: cardH },
+      card: { x: cardX, y: cardY, w: cardW, h: cardH }, gear,
       playAgain: { x: startX, y: cardY + 150, w: btnSize, h: btnSize },
       share: { x: startX + btnSize + gap, y: cardY + 150, w: btnSize, h: btnSize },
       whatsapp: { x: startX + (btnSize + gap) * 2, y: cardY + 150, w: btnSize, h: btnSize },
@@ -57,7 +59,7 @@ export function getGameOverLayout(camWidth: number, camHeight: number): {
   }
   const startX = cx - btnSize - gap / 2;
   return {
-    card: { x: cardX, y: cardY, w: cardW, h: cardH },
+    card: { x: cardX, y: cardY, w: cardW, h: cardH }, gear,
     playAgain: { x: startX, y: cardY + 150, w: btnSize, h: btnSize },
     share: { x: cx + gap / 2, y: cardY + 150, w: btnSize, h: btnSize },
   };
@@ -86,12 +88,18 @@ export function openWhatsApp(state: GameState): void {
 }
 
 export function handleGameOverClick(
-  clientX: number, clientY: number, cam: CameraViewport, state: GameState, onRestart: () => void
+  clientX: number, clientY: number, cam: CameraViewport, state: GameState, onRestart: () => void, onOpenSettings?: () => void
 ): boolean {
   if (state.state !== 'GAME_OVER') return false;
   const l = getGameOverLayout(cam.cssWidth, cam.cssHeight);
   const inR = (r: ButtonRect) => clientX >= r.x && clientX <= r.x + r.w && clientY >= r.y && clientY <= r.y + r.h;
-  if (inR(l.playAgain)) { showWhatsAppFallback = false; onRestart(); return true; }
+  if (inR(l.gear)) { onOpenSettings?.(); return true; }
+  if (inR(l.playAgain)) {
+    setAssistHintShown();
+    showWhatsAppFallback = false;
+    onRestart();
+    return true;
+  }
   if (inR(l.share)) { shareGame(state); return true; }
   if (l.whatsapp && inR(l.whatsapp)) { openWhatsApp(state); return true; }
   return false;
@@ -101,7 +109,7 @@ export function isGameOverButtonHover(clientX: number, clientY: number, cam: Cam
   if (!isGameOver) return false;
   const l = getGameOverLayout(cam.cssWidth, cam.cssHeight);
   const inR = (r: ButtonRect) => clientX >= r.x && clientX <= r.x + r.w && clientY >= r.y && clientY <= r.y + r.h;
-  return inR(l.playAgain) || inR(l.share) || !!(l.whatsapp && inR(l.whatsapp));
+  return inR(l.playAgain) || inR(l.share) || inR(l.gear) || !!(l.whatsapp && inR(l.whatsapp));
 }
 
 export function drawThemedIconButton(
@@ -128,6 +136,11 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   ctx.fillStyle = 'rgba(24, 20, 22, 0.95)';
   ctx.beginPath(); ctx.roundRect(c.x, c.y, c.w, c.h, 16); ctx.fill();
   ctx.strokeStyle = '#C98F2B'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Small gear icon in Game Over
+  ctx.fillStyle = '#94A3B8'; ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('⚙', l.gear.x + l.gear.w / 2, l.gear.y + l.gear.h / 2);
 
   ctx.fillStyle = '#EF4444'; ctx.font = '900 30px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -157,6 +170,13 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   drawThemedIconButton(ctx, l.playAgain, '↻', '#451A03', 26);
   drawThemedIconButton(ctx, l.share, '➦', '#451A03', 24);
   if (l.whatsapp) drawThemedIconButton(ctx, l.whatsapp, '💬', '#14532D', 24);
+
+  // Assist hint once after the first game over
+  if (!isAssistHintShown()) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#38BDF8'; ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText('Finding it hard? Turn on Assist in Settings.', cx, c.y + c.h + 24);
+  }
 
   if (Date.now() < copiedToastUntil) {
     const tw = 210, th = 34, tx = cx - tw / 2, ty = c.y - 44;

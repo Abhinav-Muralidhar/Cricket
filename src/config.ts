@@ -27,16 +27,13 @@ export const PALETTE = {
   buildingCream: '#EBD9B0', creamTrim: '#C6B282',
   brick: '#A85C4A', brickTrim: '#7B3828',
 
-  // Distant skyline (2 shades lighter than buildings)
   distantSkyline: '#7D98B2',
   distantSkylineTrim: '#68829B',
 
-  // Foliage & Nature
   leafGreen: '#4D7C52',
   leafGreenDark: '#335837',
   treeBark: '#543D2B',
 
-  // Accents & Props
   ball: '#D62828',
   wicketWood: '#8B5E3C',
   outlines: '#1E1E24',
@@ -50,35 +47,44 @@ export interface TimingWindowConfig {
   sixTolerance: number;
   fourEarlyTolerance: number;
   fourLateTolerance: number;
+  threeEarlyTolerance: number;
+  threeLateTolerance: number;
+  twoEarlyTolerance: number;
+  twoLateTolerance: number;
   singleEarlyTolerance: number;
   singleLateTolerance: number;
+  dotEarlyTolerance: number;
+  dotLateTolerance: number;
+  edgeLateMinOffset: number;
+  edgeLateMaxOffset: number;
+  carGlassMinOffset: number;
+  carGlassMaxOffset: number;
+  newspaperMinOffset: number;
+  newspaperMaxOffset: number;
+  acUnitMinOffset: number;
+  acUnitMaxOffset: number;
   windowMinOffset: number;
   windowMaxOffset: number;
-  scooterMinOffset: number;
-  scooterMaxOffset: number;
+  wicketOffset: number;
+  minScale: number;
+  touchForgiveness: number;
+}
+
+export interface DeliveryConfig {
+  speedJitter: number;
+  speedShiftPx: number;
+  positionJitterPx: number;
+  refSpeed: number;
+  yorkerBounceX: number;
+  assistShowMarker: boolean;
+  specialMaxChance: number;
 }
 
 export interface GameConfig {
-  world: {
-    width: number;
-    height: number;
-    minVisibleWidth: number;
-    maxVisibleWidth: number;
-    actionCenterX: number;
-  };
-  bg: {
-    src: string;
-    scale: number;
-    offsetY: number;
-  };
+  world: { width: number; height: number; minVisibleWidth: number; maxVisibleWidth: number; actionCenterX: number };
+  bg: { src: string; scale: number; offsetY: number };
   drawCodeVehicles: boolean;
-  street: {
-    buildingsY: number;
-    footpathY: number;
-    kerbY: number;
-    streetY: number;
-    groundY: number;
-  };
+  street: { buildingsY: number; footpathY: number; kerbY: number; streetY: number; groundY: number };
   layout: {
     skyline: { y: number };
     buildingA: { x: number; y: number; width: number; height: number };
@@ -112,6 +118,7 @@ export interface GameConfig {
     bounceY: number;
   };
   timing: TimingWindowConfig;
+  delivery: DeliveryConfig;
   gameplay: {
     initialLives: number;
     swingDurationSec: number;
@@ -128,38 +135,14 @@ export interface GameConfig {
   batScale: { x: number; y: number; z: number };
   characters3D: Record<string, { yaw: number; scale: number; isLeftHanded?: boolean }>;
   colors3D: { batter: string; bowler: string; fielder1: string; fielder2: string; fielder3: string };
-  colors: {
-    bg: string;
-    road: string;
-    roadMarking: string;
-    wicket: string;
-    ball: string;
-    textPrimary: string;
-    textSecondary: string;
-  };
+  colors: { bg: string; road: string; roadMarking: string; wicket: string; ball: string; textPrimary: string; textSecondary: string };
 }
 
 export const CONFIG: GameConfig = {
-  world: {
-    width: 1600,
-    height: 800,
-    minVisibleWidth: 1080,
-    maxVisibleWidth: 1600,
-    actionCenterX: 800,
-  },
-  bg: {
-    src: '/bg.png',
-    scale: 1.0,
-    offsetY: -70,
-  },
+  world: { width: 1600, height: 800, minVisibleWidth: 1080, maxVisibleWidth: 1600, actionCenterX: 800 },
+  bg: { src: '/bg.png', scale: 1.0, offsetY: -70 },
   drawCodeVehicles: false,
-  street: {
-    buildingsY: 110,
-    footpathY: 496,
-    kerbY: 536,
-    streetY: 544,
-    groundY: 660,
-  },
+  street: { buildingsY: 110, footpathY: 496, kerbY: 536, streetY: 544, groundY: 660 },
   layout: {
     skyline: { y: 155 },
     buildingA: { x: 340, y: 110, width: 290, height: 386 },
@@ -193,15 +176,39 @@ export const CONFIG: GameConfig = {
     bounceY: 690,
   },
   timing: {
-    sixTolerance: 24,
-    fourEarlyTolerance: 75,
-    fourLateTolerance: 65,
-    singleEarlyTolerance: 145,
-    singleLateTolerance: 110,
-    windowMinOffset: 145,
-    windowMaxOffset: 220,
-    scooterMinOffset: 110,
-    scooterMaxOffset: 180,
+    sixTolerance: 12,
+    fourEarlyTolerance: 38,
+    fourLateTolerance: 26,
+    threeEarlyTolerance: 48,
+    threeLateTolerance: 34,
+    twoEarlyTolerance: 58,
+    twoLateTolerance: 40,
+    singleEarlyTolerance: 66,
+    singleLateTolerance: 46,
+    dotEarlyTolerance: 75,
+    dotLateTolerance: 52,
+    edgeLateMinOffset: 52,
+    edgeLateMaxOffset: 58,
+    carGlassMinOffset: 58,
+    carGlassMaxOffset: 98,
+    newspaperMinOffset: 75,
+    newspaperMaxOffset: 130,
+    acUnitMinOffset: 130,
+    acUnitMaxOffset: 180,
+    windowMinOffset: 180,
+    windowMaxOffset: 240,
+    wicketOffset: -102,
+    minScale: 0.85,
+    touchForgiveness: 1.1,
+  },
+  delivery: {
+    speedJitter: 0.12,
+    speedShiftPx: 60,
+    positionJitterPx: 20,
+    refSpeed: 640,
+    yorkerBounceX: 480,
+    assistShowMarker: false,
+    specialMaxChance: 0.50,
   },
   gameplay: {
     initialLives: 3,

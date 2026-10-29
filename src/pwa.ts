@@ -98,3 +98,13 @@ export function promptPWAInstall(): void {
     alert('To install Gully Cricket on your home screen:\n\n• iPhone / iPad: Tap Share ➔ "Add to Home Screen"\n• Android: Tap browser menu (⋮) ➔ "Install app"\n• PC / Mac: Click the Install icon in your browser URL bar');
   }
 }
+
+export function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    'ontouchstart' in window ||
+    (navigator.maxTouchPoints || 0) > 0 ||
+    window.matchMedia?.('(pointer: coarse)').matches === true
+  );
+}
+

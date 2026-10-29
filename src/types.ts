@@ -3,6 +3,8 @@
  */
 
 import type { Animator } from './animation.ts';
+import type { Delivery } from './deliveries.ts';
+export type { Delivery } from './deliveries.ts';
 
 export type GameStateKind =
   | 'TITLE'
@@ -14,7 +16,11 @@ export type GameStateKind =
 export type OutcomeType =
   | 'SIX'
   | 'FOUR'
+  | 'THREE'
+  | 'TWO'
   | 'SINGLE'
+  | 'DOT'
+  | 'EDGE'
   | 'WINDOW'
   | 'SCOOTER'
   | 'CAR_GLASS'
@@ -102,6 +108,13 @@ export interface GameState {
   lives: number;
   ballCount: number;
   currentBallSpeed: number;
+  effectiveSweetSpotX: number;
+  currentDeliveryType: Delivery;
+  recentDeliveries: Delivery[];
+  gameSeed: number;
+  settingsOpen: boolean;
+  guideActive: boolean;
+  assistEnabled: boolean;
   ball: BallState;
   lastResult: DeliveryResult | null;
   batterRig: CharacterRig;
