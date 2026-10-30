@@ -209,3 +209,28 @@ export function playMilestoneFanfare(): void {
     osc.start(startTime); osc.stop(startTime + dur);
   });
 }
+
+/** Melancholic game-over motif */
+export function playGameOverSadJingle(): void {
+  const ac = getAudioContext(), dest = getDestination();
+  if (!ac || !dest) return;
+  const now = ac.currentTime;
+  const notes = [
+    { freq: 311.13, time: 0.00, dur: 0.38 },
+    { freq: 293.66, time: 0.30, dur: 0.38 },
+    { freq: 261.63, time: 0.60, dur: 0.45 },
+    { freq: 196.00, time: 0.95, dur: 0.85 },
+  ];
+  notes.forEach((n) => {
+    const osc = ac.createOscillator(), gain = ac.createGain();
+    const st = now + n.time;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(n.freq, st);
+    gain.gain.setValueAtTime(0.001, st);
+    gain.gain.linearRampToValueAtTime(0.18, st + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, st + n.dur);
+    osc.connect(gain); gain.connect(dest);
+    osc.start(st); osc.stop(st + n.dur);
+  });
+}
+

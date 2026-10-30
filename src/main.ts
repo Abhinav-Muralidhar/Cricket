@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from './config.ts';
-import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip, resetGame, startNewDelivery } from './state.ts';
+import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip, resetGame, startNewDelivery, triggerGameOver } from './state.ts';
 import { handleGameOverClick, isGameOverButtonHover } from './share.ts';
 import { handleTitleClick, isTitleHover } from './title-hud.ts';
 import { dismissMilestone, triggerTestMilestone } from './milestone.ts';
@@ -144,7 +144,7 @@ function initGame(): void {
       if (state.milestonePopup?.active) {
         dismissMilestone(state);
         if (state.state === 'RESULT') {
-          if (state.lives <= 0) state.state = 'GAME_OVER';
+          if (state.lives <= 0) triggerGameOver(state);
           else startNewDelivery(state);
         }
         return true;
@@ -155,7 +155,7 @@ function initGame(): void {
       if (state.milestonePopup?.active) {
         dismissMilestone(state);
         if (state.state === 'RESULT') {
-          if (state.lives <= 0) state.state = 'GAME_OVER';
+          if (state.lives <= 0) triggerGameOver(state);
           else startNewDelivery(state);
         }
         return true;

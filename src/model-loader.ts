@@ -163,8 +163,7 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
     animationClips.set('battingStance', new THREE.AnimationClip('battingStance', 2.4, stanceTracks));
   }
 
-  isLoaded = true;
-  isLoading = false;
+  isLoaded = true; isLoading = false;
 }
 
 export function instantiateCharacter(
@@ -174,11 +173,8 @@ export function instantiateCharacter(
   const model = (options.modelType && characterModels.get(options.modelType)) || baseCharacterModel;
   if (!model) throw new Error('[3D Loader] Model not loaded');
 
-  const cloned = SkeletonUtils.clone(model) as THREE.Group;
-  const meshes: THREE.Mesh[] = [];
-  cloned.traverse((o) => {
-    if ((o as THREE.Mesh).isMesh && !o.userData.isOutline) meshes.push(o as THREE.Mesh);
-  });
+  const cloned = SkeletonUtils.clone(model) as THREE.Group, meshes: THREE.Mesh[] = [];
+  cloned.traverse((o) => { if ((o as THREE.Mesh).isMesh && !o.userData.isOutline) meshes.push(o as THREE.Mesh); });
 
   for (const mesh of meshes) {
     const origMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
@@ -217,15 +213,11 @@ export function instantiateCharacter(
   // Attach Cap to Head
   if (options.withCap) {
     const headBone = findBone(cloned, 'Head');
-    if (headBone) {
-      const cap = createCapProp(color);
-      headBone.add(cap);
-    }
+    if (headBone) headBone.add(createCapProp(color));
   }
 
   const mixer = new THREE.AnimationMixer(cloned);
   const actions = new Map<string, THREE.AnimationAction>();
-
   const clonedBones = new Set<string>();
   cloned.traverse((c) => { if (c instanceof THREE.Bone) clonedBones.add(c.name); });
 
@@ -239,20 +231,15 @@ export function instantiateCharacter(
   });
 
   const clipNames = Array.from(actions.keys());
-  if (unmatchedTracks.length === 0) {
-    console.log(`[3D] Character clips: [${clipNames.join(', ')}]. All tracks match cloned skeleton bones.`);
-  } else {
-    console.warn(`[3D] Character clips: [${clipNames.join(', ')}]. Unmatched tracks (${unmatchedTracks.length}):`, unmatchedTracks);
-  }
+  if (unmatchedTracks.length === 0) console.log(`[3D] Character clips: [${clipNames.join(', ')}]. All tracks match bones.`);
+  else console.warn(`[3D] Character clips: [${clipNames.join(', ')}]. Unmatched tracks (${unmatchedTracks.length}):`, unmatchedTracks);
 
-  // Play batting stance for batter or idle for others immediately from creation
   const defaultAction = options.modelType === 'batter' && actions.has('battingStance') ? 'battingStance' : 'idle';
   const idleAction = actions.get(defaultAction);
   if (idleAction) {
     idleAction.reset();
     idleAction.setLoop(THREE.LoopRepeat, Infinity);
-    const duration = idleAction.getClip().duration || 1.0;
-    idleAction.time = Math.random() * duration;
+    idleAction.time = Math.random() * (idleAction.getClip().duration || 1.0);
     idleAction.play();
   }
 
