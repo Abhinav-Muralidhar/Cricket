@@ -166,16 +166,8 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     ctx.fillStyle = 'rgba(30, 30, 36, 0.82)';
     ctx.beginPath(); ctx.roundRect(fsX, btnY, 36, 36, 18); ctx.fill();
     ctx.strokeStyle = 'rgba(242, 193, 78, 0.40)'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    const m = 11;
-    if (isFs) {
-      ctx.beginPath();
-      ctx.moveTo(fsX + m, btnY + m); ctx.lineTo(fsX + 36 - m, btnY + 36 - m);
-      ctx.moveTo(fsX + 36 - m, btnY + m); ctx.lineTo(fsX + m, btnY + 36 - m);
-      ctx.stroke();
-    } else {
-      ctx.strokeRect(fsX + m, btnY + m, 36 - m * 2, 36 - m * 2);
-    }
+    ctx.fillStyle = '#FFFFFF'; ctx.font = '16px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(isFs ? '✕' : '⛶', fsX + 18, btnY + 18);
     ctx.restore();
   }
 
@@ -223,11 +215,11 @@ export function drawWorldDebug(ctx: CanvasRenderingContext2D, state: GameState):
 
   const zones: [number, number, string, string][] = [
     [180, 240, 'rgba(214, 40, 40, 0.85)', 'WIN'], [130, 180, 'rgba(56, 189, 248, 0.85)', 'AC'],
-    [75, 130, 'rgba(250, 204, 21, 0.85)', 'NEWS'], [12, 38, 'rgba(6, 182, 212, 0.8)', '4'],
-    [-12, 12, 'rgba(16, 185, 129, 0.9)', '6'], [-12, -26, 'rgba(6, 182, 212, 0.8)', '4'],
-    [-26, -34, 'rgba(52, 211, 153, 0.8)', '3'], [-34, -40, 'rgba(96, 165, 250, 0.8)', '2'],
-    [-40, -46, 'rgba(234, 179, 8, 0.8)', '1'], [-46, -52, 'rgba(203, 213, 225, 0.8)', 'DOT'],
-    [-52, -58, 'rgba(251, 191, 36, 0.85)', 'EDGE'], [-58, -98, 'rgba(249, 115, 22, 0.85)', 'CAR']
+    [75, 130, 'rgba(250, 204, 21, 0.85)', 'NEWS'], [9, 24, 'rgba(6, 182, 212, 0.8)', '4'],
+    [-9, 9, 'rgba(16, 185, 129, 0.9)', '6'], [-9, -18, 'rgba(6, 182, 212, 0.8)', '4'],
+    [-18, -28, 'rgba(52, 211, 153, 0.8)', '3'], [-28, -38, 'rgba(96, 165, 250, 0.8)', '2'],
+    [-38, -48, 'rgba(234, 179, 8, 0.8)', '1'], [-48, -54, 'rgba(203, 213, 225, 0.8)', 'DOT'],
+    [-54, -58, 'rgba(251, 191, 36, 0.85)', 'EDGE'], [-58, -98, 'rgba(249, 115, 22, 0.85)', 'CAR']
   ];
   for (const [mi, ma, c, l] of zones) drawZone(mi, ma, c, l);
 

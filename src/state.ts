@@ -80,9 +80,6 @@ export function handlePlayerSwing(state: GameState): void {
     const isMedium = result.outcome === 'FOUR' || result.outcome === 'THREE' || result.outcome === 'TWO';
     playBatHit(isBig ? 'PERFECT' : isMedium ? 'GOOD' : 'EDGED');
     state.lastResult = result;
-    const prevScore = state.score;
-    state.score += result.runsScored;
-    triggerMilestoneIfCrossed(state, prevScore);
     state.lives -= result.livesLost;
     setupHitTrajectory(state.ball, result.outcome, result.timingRating);
     state.state = 'HIT';
@@ -227,6 +224,9 @@ export function updateGame(state: GameState, dt: number): void {
         if (state.ball.trail.length > 8) state.ball.trail.shift();
         if (t >= 1) {
           state.state = 'RESULT';
+          const prevScore = state.score;
+          state.score += state.lastResult?.runsScored || 0;
+          triggerMilestoneIfCrossed(state, prevScore);
           const o = state.lastResult?.outcome;
           if (o === 'CAR_GLASS') { playGlassBreak(); playCarAlarm(); }
           else if (o === 'WINDOW') playGlassBreak();

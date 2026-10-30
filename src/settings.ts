@@ -7,6 +7,7 @@ import type { CameraViewport } from './render.ts';
 import type { GameState } from './types.ts';
 import { getAssistTagText } from './deliveries.ts';
 import { isAudioMuted, toggleAudioMute } from './audio.ts';
+import { getSafeAreaInsets } from './pwa.ts';
 
 const ASSIST_KEY = 'gully_cricket_assist_enabled';
 const FIRST_GUIDE_KEY = 'gully_cricket_guide_shown';
@@ -189,25 +190,24 @@ export function handleGuidePointer(clientX: number, clientY: number, cam: Camera
 export function drawAssistTag(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
   if (!state.assistEnabled || state.state !== 'BOWLING') return;
   const tagText = getAssistTagText(state.currentDeliveryType, state.currentBallSpeed);
-  const bx = (state.bowlerRig.x - cam.worldLeft) * cam.scale;
-  const by = (CONFIG.layout.bowler.y - 135 - cam.worldTop) * cam.scale;
+  const insets = getSafeAreaInsets();
+  const rightPad = Math.max(18, insets.right + 12);
+  const topPad = Math.max(18, insets.top + 10);
 
   ctx.save();
   ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
   const tw = ctx.measureText(tagText).width;
-  const pw = tw + 20, ph = 24, px = bx - pw / 2, py = by - ph / 2;
+  const pw = tw + 22, ph = 26;
+  const px = cam.cssWidth - rightPad - pw;
+  const bowlerHeadY = (CONFIG.layout.bowler.y - 145 - cam.worldTop) * cam.scale;
+  const py = Math.min(Math.max(topPad + 10, bowlerHeadY), cam.cssHeight - 60);
 
   ctx.fillStyle = 'rgba(20, 18, 24, 0.92)';
-  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 12); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 13); ctx.fill();
   ctx.strokeStyle = 'rgba(245, 158, 11, 0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
 
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
-  ctx.beginPath();
-  ctx.moveTo(bx - 4, py + ph); ctx.lineTo(bx + 4, py + ph); ctx.lineTo(bx, py + ph + 4);
-  ctx.closePath(); ctx.fill();
-
   ctx.fillStyle = '#FEF08A'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(tagText, bx, py + ph / 2);
+  ctx.fillText(tagText, px + pw / 2, py + ph / 2);
   ctx.restore();
 }
 

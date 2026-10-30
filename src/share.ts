@@ -113,7 +113,7 @@ export function isGameOverButtonHover(clientX: number, clientY: number, cam: Cam
 }
 
 export function drawThemedIconButton(
-  ctx: CanvasRenderingContext2D, r: ButtonRect, icon: string, iconCol: string = '#451A03'
+  ctx: CanvasRenderingContext2D, r: ButtonRect, icon: string, iconCol: string = '#451A03', fontSize: number = 24
 ): void {
   ctx.fillStyle = '#92400E';
   ctx.beginPath(); ctx.roundRect(r.x, r.y + 4, r.w, r.h - 4, 14); ctx.fill();
@@ -124,42 +124,9 @@ export function drawThemedIconButton(
   ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h - 4, 14); ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
 
-  const cx = r.x + r.w / 2, cy = r.y + (r.h - 4) / 2;
-  ctx.fillStyle = iconCol; ctx.strokeStyle = iconCol;
-
-  if (icon === 'play' || icon === '▶') {
-    const s = 11;
-    ctx.beginPath();
-    ctx.moveTo(cx - s * 0.7 + 1, cy - s);
-    ctx.lineTo(cx + s + 1, cy);
-    ctx.lineTo(cx - s * 0.7 + 1, cy + s);
-    ctx.closePath();
-    ctx.fill();
-  } else if (icon === 'info' || icon === 'ℹ') {
-    ctx.font = 'bold 24px "Times New Roman", Georgia, serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('i', cx, cy - 1);
-  } else if (icon === 'settings' || icon === 'gear' || icon === '⚙') {
-    ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(cx - 10, cy - 6); ctx.lineTo(cx + 10, cy - 6); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx - 3, cy - 6, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx + 4, cy, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(cx - 10, cy + 6); ctx.lineTo(cx + 10, cy + 6); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx - 4, cy + 6, 2.5, 0, Math.PI * 2); ctx.fill();
-  } else if (icon === 'replay' || icon === '↻') {
-    ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(cx, cy, 10, -Math.PI * 0.3, Math.PI * 1.35, false); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 10, cy - 8); ctx.lineTo(cx + 10, cy - 1); ctx.lineTo(cx + 3, cy - 1); ctx.closePath(); ctx.fill();
-  } else if (icon === 'share' || icon === '➦') {
-    ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(cx - 7, cy + 2); ctx.quadraticCurveTo(cx - 1, cy + 2, cx + 7, cy - 4); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 1, cy - 8); ctx.lineTo(cx + 8, cy - 4); ctx.lineTo(cx + 3, cy + 1); ctx.closePath(); ctx.fill();
-  } else if (icon === 'whatsapp' || icon === '💬') {
-    ctx.font = '900 15px system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('WA', cx, cy);
-  }
+  ctx.fillStyle = iconCol; ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(icon, r.x + r.w / 2, r.y + (r.h - 4) / 2);
 }
 
 export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
@@ -170,15 +137,10 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   ctx.beginPath(); ctx.roundRect(c.x, c.y, c.w, c.h, 16); ctx.fill();
   ctx.strokeStyle = '#C98F2B'; ctx.lineWidth = 2; ctx.stroke();
 
-  // Clean modern sliders icon on Game Over card
-  const gx = l.gear.x + l.gear.w / 2, gy = l.gear.y + l.gear.h / 2;
-  ctx.strokeStyle = '#94A3B8'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(gx - 7, gy - 4); ctx.lineTo(gx + 7, gy - 4); ctx.stroke();
-  ctx.fillStyle = '#94A3B8'; ctx.beginPath(); ctx.arc(gx - 2, gy - 4, 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(gx - 7, gy); ctx.lineTo(gx + 7, gy); ctx.stroke();
-  ctx.beginPath(); ctx.arc(gx + 3, gy, 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(gx - 7, gy + 4); ctx.lineTo(gx + 7, gy + 4); ctx.stroke();
-  ctx.beginPath(); ctx.arc(gx - 3, gy + 4, 1.5, 0, Math.PI * 2); ctx.fill();
+  // Small gear icon in Game Over
+  ctx.fillStyle = '#94A3B8'; ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('⚙', l.gear.x + l.gear.w / 2, l.gear.y + l.gear.h / 2);
 
   ctx.fillStyle = '#EF4444'; ctx.font = '900 30px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -205,9 +167,9 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   ctx.fillStyle = '#FDE68A'; ctx.font = '900 22px monospace';
   ctx.fillText(String(bestScore), midRight, spY + 37);
 
-  drawThemedIconButton(ctx, l.playAgain, 'replay', '#451A03');
-  drawThemedIconButton(ctx, l.share, 'share', '#451A03');
-  if (l.whatsapp) drawThemedIconButton(ctx, l.whatsapp, 'whatsapp', '#14532D');
+  drawThemedIconButton(ctx, l.playAgain, '↻', '#451A03', 26);
+  drawThemedIconButton(ctx, l.share, '➦', '#451A03', 24);
+  if (l.whatsapp) drawThemedIconButton(ctx, l.whatsapp, '💬', '#14532D', 24);
 
   // Assist hint once after the first game over
   if (!isAssistHintShown()) {

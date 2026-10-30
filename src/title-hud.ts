@@ -129,9 +129,9 @@ export function drawTitleHUD(ctx: CanvasRenderingContext2D, cam: CameraViewport)
 
   drawGullyBadge(ctx, l.badge, cx);
 
-  drawThemedIconButton(ctx, l.playBtn, 'play', '#451A03');
-  drawThemedIconButton(ctx, l.infoBtn, 'info', '#451A03');
-  drawThemedIconButton(ctx, l.gearBtn, 'settings', '#451A03');
+  drawThemedIconButton(ctx, l.playBtn, '▶', '#451A03', 26);
+  drawThemedIconButton(ctx, l.infoBtn, 'ℹ', '#451A03', 24);
+  drawThemedIconButton(ctx, l.gearBtn, '⚙', '#451A03', 24);
 
   ctx.fillStyle = '#94A3B8'; ctx.font = '600 12px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
