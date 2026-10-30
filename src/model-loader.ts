@@ -67,6 +67,22 @@ export function removeRootDrift(clip: THREE.AnimationClip): THREE.AnimationClip 
   return cloned;
 }
 
+/** Limits cheer backward motion to at most one athletic step, well before the stumps */
+export function limitCheerDrift(clip: THREE.AnimationClip): THREE.AnimationClip {
+  const cloned = clip.clone();
+  for (const track of cloned.tracks) {
+    if (track.name.toLowerCase().includes('hips') && track.name.endsWith('.position')) {
+      const initX = track.values[0] ?? 0, initZ = track.values[2] ?? 0;
+      for (let i = 0; i < track.values.length; i += 3) {
+        track.values[i] = initX + (track.values[i] - initX) * 0.4;
+        const dZ = track.values[i + 2] - initZ;
+        track.values[i + 2] = initZ + (dZ < 0 ? 32 * Math.tanh(dZ / 45) : dZ * 0.7);
+      }
+    }
+  }
+  return cloned;
+}
+
 export async function load3DAssets(onProgress?: (ratio: number) => void): Promise<void> {
   if (isLoaded) return;
   if (isLoading) return;
@@ -110,7 +126,8 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
   for (const origClip of animsGltf.animations) {
     let clip = origClip.clone();
     const name = clip.name;
-    if (name === 'run' || name === 'cheer') clip = removeRootDrift(clip);
+    if (name === 'run') clip = removeRootDrift(clip);
+    if (name === 'cheer') clip = limitCheerDrift(clip);
     if (name === 'pitch') clip = THREE.AnimationUtils.subclip(clip, 'pitch', 40, 76, 30);
     animationClips.set(name, clip);
   }
