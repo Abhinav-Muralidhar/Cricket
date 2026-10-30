@@ -40,31 +40,31 @@ export function getFunnyGameOverLine(state: GameState): string {
 export interface ButtonRect { x: number; y: number; w: number; h: number; }
 
 export function getGameOverLayout(camWidth: number, camHeight: number): {
-  card: ButtonRect; playAgain: ButtonRect; share: ButtonRect; gear: ButtonRect; whatsapp: ButtonRect;
+  card: ButtonRect; playAgain: ButtonRect; share: ButtonRect; gear: ButtonRect;
 } {
   const cx = camWidth / 2, cy = camHeight / 2;
   const cardW = Math.min(380, camWidth - 32), cardH = 226, cardX = cx - cardW / 2, cardY = cy - cardH / 2 - 8;
-  const btnSize = 58, gap = 16;
+  const btnSize = 58, gap = 20;
   const gear: ButtonRect = { x: cardX + cardW - 36, y: cardY + 12, w: 24, h: 24 };
-  const totalW = btnSize * 3 + gap * 2, startX = cx - totalW / 2;
+  const startX = cx - btnSize - gap / 2;
 
   return {
     card: { x: cardX, y: cardY, w: cardW, h: cardH }, gear,
     playAgain: { x: startX, y: cardY + 150, w: btnSize, h: btnSize },
-    share: { x: startX + btnSize + gap, y: cardY + 150, w: btnSize, h: btnSize },
-    whatsapp: { x: startX + (btnSize + gap) * 2, y: cardY + 150, w: btnSize, h: btnSize },
+    share: { x: cx + gap / 2, y: cardY + 150, w: btnSize, h: btnSize },
   };
 }
 
 export async function shareGame(state: GameState): Promise<void> {
   const url = 'https://playgully.vercel.app/';
   const text = `I scored ${state.score} in Gully Cricket! ${getFunnyGameOverLine(state)}`;
-  const sharePayload = { title: 'Gully Cricket', text: `${text}\nBeat me: ${url}`, url };
+  const fullText = `${text}\nBeat me: ${url}`;
 
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
-      if (!navigator.canShare || navigator.canShare(sharePayload)) {
-        await navigator.share(sharePayload);
+      const payload = { title: 'Gully Cricket: Neighborhood Chaos', text: fullText, url };
+      if (!navigator.canShare || navigator.canShare(payload)) {
+        await navigator.share(payload);
         return;
       }
     } catch (err: unknown) {
@@ -75,16 +75,14 @@ export async function shareGame(state: GameState): Promise<void> {
 
   try {
     if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(`${text}\nBeat me: ${url}`);
-      copiedToastUntil = Date.now() + 1500;
+      await navigator.clipboard.writeText(fullText);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = fullText; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
     }
+    copiedToastUntil = Date.now() + 1800;
   } catch { }
-}
-
-export function openWhatsApp(state: GameState): void {
-  const url = 'https://playgully.vercel.app/';
-  const text = `I scored ${state.score} in Gully Cricket! ${getFunnyGameOverLine(state)}\nBeat me: ${url}`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
 }
 
 export function handleGameOverClick(
@@ -100,7 +98,6 @@ export function handleGameOverClick(
     return true;
   }
   if (inR(l.share)) { shareGame(state); return true; }
-  if (inR(l.whatsapp)) { openWhatsApp(state); return true; }
   return false;
 }
 
@@ -108,7 +105,7 @@ export function isGameOverButtonHover(clientX: number, clientY: number, cam: Cam
   if (!isGameOver) return false;
   const l = getGameOverLayout(cam.cssWidth, cam.cssHeight);
   const inR = (r: ButtonRect) => clientX >= r.x && clientX <= r.x + r.w && clientY >= r.y && clientY <= r.y + r.h;
-  return inR(l.playAgain) || inR(l.share) || inR(l.gear) || inR(l.whatsapp);
+  return inR(l.playAgain) || inR(l.share) || inR(l.gear);
 }
 
 export function drawThemedIconButton(
@@ -168,7 +165,6 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
 
   drawThemedIconButton(ctx, l.playAgain, '↻', '#451A03', 26);
   drawThemedIconButton(ctx, l.share, '➦', '#451A03', 24);
-  drawThemedIconButton(ctx, l.whatsapp, '💬', '#14532D', 24);
 
   // Assist hint once after the first game over
   if (!isAssistHintShown()) {
