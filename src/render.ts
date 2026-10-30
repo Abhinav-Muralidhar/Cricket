@@ -78,9 +78,8 @@ function drawBall(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.save();
 
   // 1. Dynamic ground drop shadow on asphalt (removed when stopped)
-  const isMoving = state.state === 'BOWLING' ||
-    (state.state === 'HIT' && (ball.arcProgress || 0) < 1.0) ||
-    (state.state === 'RESULT' && (Math.abs(ball.vx || 0) > 5 || Math.abs(ball.vy || 0) > 5));
+  const isBowledMoving = state.state === 'RESULT' && state.lastResult?.outcome === 'BOWLED' && (Math.abs(ball.vx || 0) > 5 || Math.abs(ball.vy || 0) > 5);
+  const isMoving = state.state === 'BOWLING' || (state.state === 'HIT' && (ball.arcProgress || 0) < 1.0) || isBowledMoving;
 
   if (isMoving) {
     const asphaltY = 690;

@@ -16,14 +16,14 @@ export { createRig, createBatterRig, createBowlerRig, createInitialState } from 
 
 export function startNewDelivery(state: GameState): void {
   state.lastResult = null;
-  state.ballCount++;
-  const rng = createBallRng(state.gameSeed + state.ballCount * 314159265);
-  const del = selectDelivery(state.ballCount, state.score, state.recentDeliveries, rng);
+  const nextBallNum = state.ballCount + 1;
+  const rng = createBallRng(state.gameSeed + nextBallNum * 314159265);
+  const del = selectDelivery(nextBallNum, state.score, state.recentDeliveries, rng);
   state.currentDeliveryType = del;
   state.recentDeliveries.push(del);
   if (state.recentDeliveries.length > 5) state.recentDeliveries.shift();
 
-  const rampedBase = Math.min(CONFIG.ball.maxSpeed, CONFIG.ball.baseSpeed + (state.ballCount - 1) * CONFIG.ball.speedIncrementPerBall);
+  const rampedBase = Math.min(CONFIG.ball.maxSpeed, CONFIG.ball.baseSpeed + (nextBallNum - 1) * CONFIG.ball.speedIncrementPerBall);
   state.currentBallSpeed = calculateBallSpeed(rampedBase, del, rng);
   state.effectiveSweetSpotX = calculateEffectiveSweetSpot(state.currentBallSpeed, del, rng);
   logDeliveryDebug(del, state.currentBallSpeed, state.effectiveSweetSpotX);
@@ -80,7 +80,6 @@ export function handlePlayerSwing(state: GameState): void {
     const isMedium = result.outcome === 'FOUR' || result.outcome === 'THREE' || result.outcome === 'TWO';
     playBatHit(isBig ? 'PERFECT' : isMedium ? 'GOOD' : 'EDGED');
     state.lastResult = result;
-    state.lives -= result.livesLost;
     setupHitTrajectory(state.ball, result.outcome, result.timingRating);
     state.state = 'HIT';
     state.squashX = 1.18; state.squashY = 0.84;
@@ -186,6 +185,7 @@ export function updateGame(state: GameState, dt: number): void {
         const wicketTriggerX = state.effectiveSweetSpotX + CONFIG.timing.wicketOffset;
         if (state.ball.x <= wicketTriggerX) {
           playWicketsClatter();
+          state.ballCount++;
           state.lives = Math.max(0, state.lives - 1);
           state.lastResult = { outcome: 'BOWLED', timingRating: state.hasSwungThisBall ? 'TOO_LATE' : 'NONE',
             timingOffsetPx: state.ball.x - state.effectiveSweetSpotX, timingOffsetMs: Math.round(((state.ball.x - state.effectiveSweetSpotX) / state.currentBallSpeed) * 1000),
@@ -224,8 +224,10 @@ export function updateGame(state: GameState, dt: number): void {
         if (state.ball.trail.length > 8) state.ball.trail.shift();
         if (t >= 1) {
           state.state = 'RESULT';
+          state.ballCount++;
           const prevScore = state.score;
           state.score += state.lastResult?.runsScored || 0;
+          state.lives = Math.max(0, state.lives - (state.lastResult?.livesLost || 0));
           triggerMilestoneIfCrossed(state, prevScore);
           const o = state.lastResult?.outcome;
           if (o === 'CAR_GLASS') { playGlassBreak(); playCarAlarm(); }

@@ -119,6 +119,8 @@ export function evaluateTiming(offsetPx: number, speed: number, isTouch = false)
 export function setupHitTrajectory(ball: BallState, outcome: OutcomeType, timingRating?: TimingRating): void {
   ball.startPos = { x: ball.x, y: ball.y };
   ball.arcProgress = 0;
+  ball.vx = 0;
+  ball.vy = 0;
   const l = CONFIG.layout;
   if (outcome === 'WINDOW') {
     ball.target = { x: l.window.x + l.window.width / 2, y: l.window.y + l.window.height / 2 };
