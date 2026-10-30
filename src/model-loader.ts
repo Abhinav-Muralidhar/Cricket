@@ -110,7 +110,7 @@ export async function load3DAssets(onProgress?: (ratio: number) => void): Promis
   for (const origClip of animsGltf.animations) {
     let clip = origClip.clone();
     const name = clip.name;
-    if (name === 'run') clip = removeRootDrift(clip);
+    if (name === 'run' || name === 'cheer') clip = removeRootDrift(clip);
     if (name === 'pitch') clip = THREE.AnimationUtils.subclip(clip, 'pitch', 40, 76, 30);
     animationClips.set(name, clip);
   }
