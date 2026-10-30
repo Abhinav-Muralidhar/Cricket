@@ -15,20 +15,41 @@ import { drawAssistTag, drawAssistMarker, drawSettingsModal, drawFirstTimeGuide 
 export function drawRotatePhoneOverlay(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
   ctx.save();
   ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
-  ctx.fillStyle = 'rgba(18, 18, 24, 0.96)';
-  ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
+  ctx.fillStyle = 'rgba(15, 15, 20, 0.97)'; ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
+
   const cx = cam.cssWidth / 2, cy = cam.cssHeight / 2;
+  const glow = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.min(cam.cssWidth, cam.cssHeight) * 0.6);
+  glow.addColorStop(0, 'rgba(242, 193, 78, 0.12)'); glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, cam.cssWidth, cam.cssHeight);
+
+  const cardW = Math.min(320, cam.cssWidth - 36), cardH = 260, cardX = cx - cardW / 2, cardY = cy - cardH / 2;
+  ctx.fillStyle = 'rgba(26, 24, 30, 0.92)';
+  ctx.beginPath(); ctx.roundRect(cardX, cardY, cardW, cardH, 20); ctx.fill();
+  ctx.strokeStyle = 'rgba(242, 193, 78, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Animated phone gyro rotation (smooth 2.6s easing loop to the left)
+  const t = ((typeof performance !== 'undefined' ? performance.now() : Date.now()) % 2600) / 2600;
+  let angle = 0;
+  if (t >= 0.25 && t < 0.65) {
+    const p = (t - 0.25) / 0.40, ease = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    angle = -ease * (Math.PI / 2);
+  } else if (t >= 0.65 && t < 0.90) angle = -Math.PI / 2;
+  else if (t >= 0.90) angle = -(1 - Math.pow((t - 0.90) / 0.10, 2)) * (Math.PI / 2);
+
   ctx.save();
-  ctx.translate(cx, cy - 50);
-  ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.roundRect(-22, -36, 44, 72, 8); ctx.stroke();
-  ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(0, 26, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(0, 0, 48, -Math.PI * 0.35, Math.PI * 0.45, false); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(35, 34); ctx.lineTo(44, 44); ctx.lineTo(28, 46); ctx.fill();
+  ctx.translate(cx, cardY + 85);
+  ctx.rotate(angle);
+  ctx.fillStyle = '#1E1E24'; ctx.beginPath(); ctx.roundRect(-22, -36, 44, 72, 8); ctx.fill();
+  ctx.strokeStyle = '#F2C14E'; ctx.lineWidth = 2.2; ctx.stroke();
+  ctx.fillStyle = 'rgba(242, 193, 78, 0.18)'; ctx.beginPath(); ctx.roundRect(-18, -28, 36, 56, 4); ctx.fill();
+  ctx.fillStyle = '#F2C14E'; ctx.beginPath(); ctx.arc(0, 29, 2.2, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#FFFFFF'; ctx.font = '900 24px sans-serif'; ctx.fillText('PLEASE ROTATE YOUR PHONE', cx, cy + 35);
-  ctx.fillStyle = PALETTE.cream; ctx.font = '15px sans-serif'; ctx.fillText('Gully Cricket is best played in landscape mode', cx, cy + 68);
+  ctx.fillStyle = '#FFFFFF'; ctx.font = '800 18px system-ui, -apple-system, sans-serif';
+  ctx.fillText('PLEASE ROTATE YOUR PHONE', cx, cardY + cardH - 58);
+  ctx.fillStyle = PALETTE.cream; ctx.font = '500 13px system-ui, -apple-system, sans-serif';
+  ctx.fillText('Gully Cricket is best played in landscape mode', cx, cardY + cardH - 32);
   ctx.restore();
 }
 
@@ -37,30 +58,23 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
   const insets = getSafeAreaInsets();
   const topPad = Math.max(18, insets.top + 10), leftPad = Math.max(18, insets.left + 12);
   const rightPad = Math.max(18, insets.right + 12), botPad = Math.max(20, insets.bottom + 12);
-  const bestScore = Math.max(state.score, getStoredBestScore());
-  const pillX = leftPad, pillY = topPad, pillW = 340, pillH = 44, cyPill = pillY + pillH / 2;
 
-  ctx.fillStyle = 'rgba(26, 24, 28, 0.82)';
-  ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 22); ctx.fill();
-  ctx.strokeStyle = 'rgba(242, 193, 78, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
-  ctx.fillText(`RUNS ${state.score} [${state.ballCount}]`, pillX + 14, cyPill);
-
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(pillX + 112, pillY + 11); ctx.lineTo(pillX + 112, pillY + pillH - 11); ctx.stroke();
-  ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#FBBF24';
-  ctx.fillText(`BEST ${bestScore}`, pillX + 122, cyPill);
-
-  ctx.beginPath(); ctx.moveTo(pillX + 194, pillY + 11); ctx.lineTo(pillX + 194, pillY + pillH - 11); ctx.stroke();
-  ctx.font = 'bold 12px monospace'; ctx.fillStyle = PALETTE.cream;
-  ctx.fillText('LIVES', pillX + 204, cyPill);
-
-  for (let i = 0; i < CONFIG.gameplay.initialLives; i++) {
-    const bx = pillX + 256 + i * 18, alive = i < state.lives;
-    ctx.beginPath(); ctx.arc(bx, cyPill, 5.5, 0, Math.PI * 2);
-    ctx.fillStyle = alive ? PALETTE.ball : 'rgba(100, 100, 100, 0.35)'; ctx.fill();
-    ctx.lineWidth = 1.5; ctx.strokeStyle = alive ? '#FDE68A' : 'rgba(150, 150, 150, 0.25)'; ctx.stroke();
+  if (state.state !== 'TITLE' && state.state !== 'GAME_OVER') {
+    const bestScore = Math.max(state.score, getStoredBestScore());
+    const pillX = leftPad, pillY = topPad, pillW = 340, pillH = 44, cyPill = pillY + pillH / 2;
+    ctx.fillStyle = 'rgba(26, 24, 28, 0.82)'; ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 22); ctx.fill();
+    ctx.strokeStyle = 'rgba(242, 193, 78, 0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = PALETTE.cream; ctx.fillText(`RUNS ${state.score} [${state.ballCount}]`, pillX + 14, cyPill);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pillX + 112, pillY + 11); ctx.lineTo(pillX + 112, pillY + pillH - 11); ctx.stroke(); ctx.fillStyle = '#FBBF24'; ctx.fillText(`BEST ${bestScore}`, pillX + 122, cyPill);
+    ctx.beginPath(); ctx.moveTo(pillX + 194, pillY + 11); ctx.lineTo(pillX + 194, pillY + pillH - 11); ctx.stroke(); ctx.fillStyle = PALETTE.cream; ctx.fillText('LIVES', pillX + 204, cyPill);
+    for (let i = 0; i < CONFIG.gameplay.initialLives; i++) {
+      const bx = pillX + 256 + i * 18, alive = i < state.lives;
+      ctx.beginPath(); ctx.arc(bx, cyPill, 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = alive ? PALETTE.ball : 'rgba(100, 100, 100, 0.35)'; ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = alive ? '#FDE68A' : 'rgba(150, 150, 150, 0.25)'; ctx.stroke();
+    }
   }
 
   drawAssistTag(ctx, state, cam);
@@ -71,11 +85,9 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
     let numText = '0', tag = 'DOT', numColor = '#94A3B8', ccDesc = 'PLAY & MISS • BEATEN OUTSIDE OFF';
 
     if (res.outcome === 'SIX') {
-      numText = '+6'; tag = 'MAXIMUM'; numColor = '#FDE047';
-      ccDesc = res.timingOffsetPx < 0 ? 'MAXIMUM • OVER DEEP MID-WICKET' : 'MAXIMUM • STRAIGHT OVER ROOFTOPS';
+      numText = '+6'; tag = 'MAXIMUM'; numColor = '#FDE047'; ccDesc = res.timingOffsetPx < 0 ? 'MAXIMUM • OVER DEEP MID-WICKET' : 'MAXIMUM • STRAIGHT OVER ROOFTOPS';
     } else if (res.outcome === 'FOUR') {
-      numText = '+4'; tag = 'FOUR'; numColor = '#38BDF8';
-      ccDesc = res.timingOffsetPx > 0 ? 'COVER DRIVE • SWEPT TO FENCE' : 'LATE DAB • PAST THIRD MAN';
+      numText = '+4'; tag = 'FOUR'; numColor = '#38BDF8'; ccDesc = res.timingOffsetPx > 0 ? 'COVER DRIVE • SWEPT TO FENCE' : 'LATE DAB • PAST THIRD MAN';
     } else if (res.outcome === 'THREE') {
       numText = '+3'; tag = 'THREE!'; numColor = '#34D399'; ccDesc = 'SUPERB PLACEMENT • RUNNING 3';
     } else if (res.outcome === 'TWO') {
