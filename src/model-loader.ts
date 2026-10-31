@@ -15,6 +15,7 @@ import {
   createBatProp,
 } from './toon-material.ts';
 import { CONFIG } from './config.ts';
+import { createJerseyBackBadge } from './profile.ts';
 
 export interface LoadedCharacterInstance {
   group: THREE.Group;
@@ -177,12 +178,12 @@ export function instantiateCharacter(
   cloned.traverse((o) => { if ((o as THREE.Mesh).isMesh && !o.userData.isOutline) meshes.push(o as THREE.Mesh); });
 
   for (const mesh of meshes) {
-    const isShirt = mesh.name === 'Ch42_Shirt', isShorts = mesh.name === 'Ch42_Shorts';
     const origMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     const origMap = (origMat as THREE.MeshStandardMaterial)?.map || null;
     if (origMap) origMap.colorSpace = THREE.SRGBColorSpace;
+    mesh.userData.origMap = origMap;
     const isEyelash = mesh.name.toLowerCase().includes('eyelash');
-    mesh.material = (isShirt || isShorts) ? createToonMaterial(color, null) : createToonMaterial(color, origMap);
+    mesh.material = createToonMaterial(color, origMap);
     if (isEyelash) {
       mesh.material.transparent = true;
       mesh.material.alphaTest = 0.5;
@@ -207,14 +208,16 @@ export function instantiateCharacter(
     }
   }
 
-  // Attach Cap to Head (always available on batter model for live toggling)
-  if (options.withCap || options.modelType === 'batter') {
+  // Attach big white jersey name and number badge to spine on batter
+  if (options.modelType === 'batter') {
+    const spineBone = findBone(cloned, 'Spine2') || findBone(cloned, 'Spine1');
+    if (spineBone) spineBone.add(createJerseyBackBadge('PLAYER', 1));
+  }
+
+  // Attach Cap to Head if requested
+  if (options.withCap) {
     const headBone = findBone(cloned, 'Head');
-    if (headBone) {
-      const cap = createCapProp(color);
-      cap.visible = Boolean(options.withCap);
-      headBone.add(cap);
-    }
+    if (headBone) headBone.add(createCapProp(color));
   }
 
   const mixer = new THREE.AnimationMixer(cloned);

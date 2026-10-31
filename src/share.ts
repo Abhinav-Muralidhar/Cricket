@@ -4,7 +4,6 @@
 import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
 import { isAssistHintShown, setAssistHintShown } from './settings.ts';
-import { getProfileMoniker } from './profile.ts';
 
 const BEST_SCORE_KEY = 'gully_cricket_best_score';
 let copiedToastUntil = 0;
@@ -58,8 +57,8 @@ export function getGameOverLayout(camWidth: number, camHeight: number): {
 
 export async function shareGame(state: GameState): Promise<void> {
   const url = 'https://playgully.vercel.app/';
-  const moniker = state.batterProfile ? getProfileMoniker(state.batterProfile) : '';
-  const prefix = moniker ? `[${moniker}] ` : '';
+  const pName = state.batterProfile?.name || 'Karan';
+  const prefix = `[#${state.batterProfile?.jerseyNumber ?? 18} ${pName}] `;
   const text = `${prefix}I scored ${state.score} in Gully Cricket! ${getFunnyGameOverLine(state)}`;
   const fullText = `${text}\nBeat me: ${url}`;
 
@@ -123,9 +122,17 @@ export function drawThemedIconButton(
   ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h - 4, 14); ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
 
-  ctx.fillStyle = iconCol; ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(icon, r.x + r.w / 2, r.y + (r.h - 4) / 2);
+  const cx = r.x + r.w / 2, cy = r.y + (r.h - 4) / 2;
+  if (icon === '👤' || icon === 'USER') {
+    ctx.fillStyle = iconCol;
+    ctx.beginPath(); ctx.arc(cx, cy - 6, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy + 14, 11, Math.PI * 1.15, Math.PI * 1.85, false);
+    ctx.lineTo(cx + 8, cy + 8); ctx.lineTo(cx - 8, cy + 8); ctx.fill();
+  } else {
+    ctx.fillStyle = iconCol; ctx.font = `900 ${fontSize}px system-ui, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(icon, cx, cy);
+  }
 }
 
 export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: CameraViewport): void {
@@ -145,9 +152,10 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   ctx.fillText('GAME OVER', cx, c.y + 40);
 
-  const moniker = state.batterProfile ? getProfileMoniker(state.batterProfile) : '';
+  const p = state.batterProfile;
+  const playerTitle = p ? `★ #${p.jerseyNumber} ${p.name.toUpperCase()} ★  •  ` : '';
   ctx.fillStyle = '#FDE68A'; ctx.font = 'italic 500 12px system-ui, sans-serif';
-  ctx.fillText(`${moniker ? `★ ${moniker.toUpperCase()} ★  •  ` : ''}"${getFunnyGameOverLine(state)}"`, cx, c.y + 64);
+  ctx.fillText(`${playerTitle}"${getFunnyGameOverLine(state)}"`, cx, c.y + 64);
 
   const spW = c.w - 44, spH = 54, spX = c.x + 22, spY = c.y + 78;
   ctx.fillStyle = 'rgba(15, 12, 10, 0.75)';

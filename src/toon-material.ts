@@ -202,12 +202,12 @@ export function createBatProp(): THREE.Group {
   shoulder.position.set(0, 0, 8);
   batGroup.add(shoulder);
 
-  // Red manufacturer brand stripe across shoulders
-  const stickerGeo = new THREE.BoxGeometry(11.0, 4.8, 3.5);
-  const sticker = new THREE.Mesh(stickerGeo, stickerMat);
-  sticker.name = 'batSticker';
-  sticker.position.set(0, 0, 8.5);
-  batGroup.add(sticker);
+  // Top brand sticker
+  const brandGeo = new THREE.BoxGeometry(13.8, 5.0, 24.0);
+  const brandPlate = new THREE.Mesh(brandGeo, stickerMat);
+  brandPlate.name = 'batSticker';
+  brandPlate.position.set(0, 0, 24);
+  batGroup.add(brandPlate);
 
   // Authentic willow blade with front face and edges
   const bladeGeo = new THREE.BoxGeometry(13.5, 4.8, 52.0);

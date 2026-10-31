@@ -190,6 +190,7 @@ export function renderGame(
   hudCtx.setTransform(1, 0, 0, 1, 0, 0);
   hudCtx.clearRect(0, 0, hudCtx.canvas.width, hudCtx.canvas.height);
 
+
   if (cam.isPortraitPhone) {
     drawRotatePhoneOverlay(hudCtx, cam);
     return;

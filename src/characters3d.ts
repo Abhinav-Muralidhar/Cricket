@@ -9,6 +9,7 @@ import { load3DAssets, instantiateCharacter } from './model-loader.ts';
 import { CharacterController3D } from './character-controller.ts';
 import { BallRetrievalManager } from './ball-retrieval.ts';
 import { getStoredProfile, applyProfileTo3D, type BatterProfile, JERSEY_PRESETS } from './profile.ts';
+import { Characters3DDebugger } from './characters3d-debug.ts';
 import type { CameraViewport } from './render.ts';
 import type { GameState } from './types.ts';
 
@@ -18,16 +19,17 @@ export class Characters3DManager {
   public camera: THREE.OrthographicCamera;
   public characters = new Map<string, CharacterController3D>();
   public isReady = false;
-  public selectedDebugChar = 'batter';
+  public isDressingRoom = false;
+  public isDraggingBatter = false;
   private prevStateKind = '';
   private prevBowlerPhase = '';
   private prevIsSwinging = false;
   private bowlerRunStartX = 0;
   private ballRetrieval = new BallRetrievalManager();
+  private dbg = new Characters3DDebugger();
   private lastW = 0;
   private lastH = 0;
   private lastDpr = 0;
-  private debugClipNames = ['idle', 'swing', 'pitch', 'run', 'slide', 'dive', 'defeated', 'clap', 'cheer'];
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -40,20 +42,19 @@ export class Characters3DManager {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene = new THREE.Scene();
-
-    // Side-on OrthographicCamera looking along -Z
     this.camera = new THREE.OrthographicCamera(0, 1600, 800, 0, -2000, 2000);
     this.camera.position.set(0, 0, 500);
     this.camera.lookAt(0, 0, 0);
 
-    // Warm directional sun light from the left (-0.7, 0.4, 0.6) + soft ambient light
     const sunLight = new THREE.DirectionalLight(0xfff4e6, 1.3);
     sunLight.position.set(-700, 400, 600);
     this.scene.add(sunLight);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    this.scene.add(ambientLight);
+    const keyLight = new THREE.DirectionalLight(0xfff5ea, 1.2);
+    keyLight.position.set(0, 300, 400);
+    this.scene.add(keyLight);
 
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.75));
     this.init();
   }
 
@@ -72,10 +73,9 @@ export class Characters3DManager {
     const c3d = CONFIG.characters3D;
     const cols = CONFIG.colors3D;
 
-    // 1. Batter (hero, with bat)
     const profile = getStoredProfile();
     const jerseyCol = JERSEY_PRESETS[profile.jerseyIndex]?.color || cols.batter;
-    const batterInst = instantiateCharacter(jerseyCol, { withBat: true, withCap: profile.hasCap, modelType: 'batter' });
+    const batterInst = instantiateCharacter(jerseyCol, { withBat: true, withCap: false, modelType: 'batter' });
     const batter = new CharacterController3D(batterInst, {
       yaw: c3d.batter.yaw, scale: c3d.batter.scale, isLeftHanded: c3d.batter.isLeftHanded, isBatter: true,
     });
@@ -85,7 +85,6 @@ export class Characters3DManager {
     this.characters.set('batter', batter);
     this.scene.add(batter.group);
 
-    // 2. Bowler (from pitch.fbx model in hoody)
     const bowlerInst = instantiateCharacter(cols.bowler, { withBat: false, withCap: false, modelType: 'bowler' });
     const bowler = new CharacterController3D(bowlerInst, { yaw: c3d.bowler.yaw, scale: c3d.bowler.scale, isBatter: false });
     bowler.setPosition(l.bowler.x, l.bowler.y, 0);
@@ -93,8 +92,6 @@ export class Characters3DManager {
     this.bowlerRunStartX = l.bowler.x + 35;
     this.characters.set('bowler', bowler);
     this.scene.add(bowler.group);
-
-    // 3. Fielders disabled for now per user request (focus on 1-on-1 pitch action)
   }
 
   public applyCustomization(profile: BatterProfile): void {
@@ -102,8 +99,71 @@ export class Characters3DManager {
     if (batter) applyProfileTo3D(batter.group, profile);
   }
 
+  public setDressingRoomMode(active: boolean, cam?: CameraViewport): void {
+    this.isDressingRoom = active;
+    const batter = this.characters.get('batter');
+    const bowler = this.characters.get('bowler');
+    if (!batter) return;
+
+    if (bowler) bowler.group.visible = !active;
+    ['fielder1', 'fielder2', 'fielder3'].forEach((k) => {
+      const f = this.characters.get(k);
+      if (f) f.group.visible = !active;
+    });
+
+    if (active) {
+      batter.group.visible = true;
+      this.updateDressingRoomBatter(cam);
+      batter.setYaw(0);
+      batter.playIdle(true);
+    } else {
+      batter.configScale = CONFIG.characters3D.batter.scale;
+      batter.setYaw(CONFIG.characters3D.batter.yaw);
+      batter.setPosition(CONFIG.layout.batter.x, CONFIG.layout.batter.y, 0);
+      batter.playStance();
+    }
+  }
+
+  public updateDressingRoomBatter(cam?: CameraViewport): void {
+    const batter = this.characters.get('batter');
+    if (!batter || !cam) return;
+    const stage = typeof document !== 'undefined' ? document.querySelector('.dr-stage') : null;
+    if (stage) {
+      const rect = stage.getBoundingClientRect();
+      const screenCenterX = rect.left + rect.width / 2;
+      const isPort = rect.height < 210 || cam.cssHeight > cam.cssWidth;
+      const screenFeetY = rect.bottom - (isPort ? 20 : 31);
+      const worldX = cam.worldLeft + screenCenterX / cam.scale;
+      const worldY = cam.worldTop + screenFeetY / cam.scale;
+      batter.setPosition(worldX, worldY, 0);
+    } else {
+      batter.setPosition(cam.worldLeft + (cam.cssWidth / 2) / cam.scale, 690, 0);
+    }
+    batter.configScale = CONFIG.characters3D.batter.scale;
+  }
+
+  public rotateBatter(deltaYaw: number): void {
+    const batter = this.characters.get('batter');
+    if (!batter) return;
+    batter.setYaw(batter.yaw + deltaYaw);
+  }
+
+  public triggerBatterShot(): void {
+    const batter = this.characters.get('batter');
+    if (!batter) return;
+    batter.playSwing(CONFIG.swingStartOffset, CONFIG.swingTimeScale);
+  }
+
   public update(dt: number, state: GameState): void {
     if (!this.isReady) return;
+
+    if (this.isDressingRoom) {
+      const batter = this.characters.get('batter');
+      batter?.update(dt);
+      const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!this.isDraggingBatter && !reduced) this.rotateBatter(dt * 0.4);
+      return;
+    }
 
     this.characters.forEach((char) => char.update(dt));
     this.syncGameState(state);
@@ -117,54 +177,34 @@ export class Characters3DManager {
     const f2 = this.characters.get('fielder2');
     const f3 = this.characters.get('fielder3');
 
-    // 1. Bowling run-up and delivery
     if (state.state === 'BOWLING') {
-      if (this.prevStateKind !== 'BOWLING') {
-        bowler?.playRun();
-        batter?.playStance();
-      }
-      if (!state.isSwinging && batter && batter.currentActionName !== 'battingStance' && batter.currentActionName !== 'swing') {
-        batter.playStance();
-      }
+      if (this.prevStateKind !== 'BOWLING') { bowler?.playRun(); batter?.playStance(); }
+      if (!state.isSwinging && batter && batter.currentActionName !== 'battingStance' && batter.currentActionName !== 'swing') batter.playStance();
       if (state.bowlerPhase === 'RUN_UP' && bowler) {
         const t = Math.min(1, state.bowlerTimer / 0.55);
-        const curX = this.bowlerRunStartX + (CONFIG.layout.bowler.x - this.bowlerRunStartX) * t;
-        bowler.setPosition(curX, CONFIG.layout.bowler.y, 0);
+        bowler.setPosition(this.bowlerRunStartX + (CONFIG.layout.bowler.x - this.bowlerRunStartX) * t, CONFIG.layout.bowler.y, 0);
       } else if (state.bowlerPhase === 'DELIVERY' && this.prevBowlerPhase !== 'DELIVERY') {
         bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
-        bowler?.playPitch(0.0, 1.9, () => {
-          bowler?.playIdle(false);
-        });
+        bowler?.playPitch(0.0, 1.9, () => { bowler?.playIdle(false); });
       }
     } else if (this.prevStateKind === 'BOWLING') {
-      bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0);
-      bowler?.playIdle(false);
+      bowler?.setPosition(CONFIG.layout.bowler.x, CONFIG.layout.bowler.y, 0); bowler?.playIdle(false);
     }
 
-    // 2. Player Tap / Swing
-    if (state.isSwinging && !this.prevIsSwinging) {
-      batter?.playSwing(CONFIG.swingStartOffset, CONFIG.swingTimeScale);
-    }
+    if (state.isSwinging && !this.prevIsSwinging) batter?.playSwing(CONFIG.swingStartOffset, CONFIG.swingTimeScale);
 
-    // 3. Outcomes & Celebrations (delayed until shot finishes and reaches RESULT state)
     if ((state.state === 'RESULT' || state.state === 'GAME_OVER') && state.lastResult && this.prevStateKind !== 'RESULT' && this.prevStateKind !== 'GAME_OVER') {
       const outcome = state.lastResult.outcome;
       if (state.milestonePopup?.active) {
-        batter?.playCheer();
-        f1?.playClap(); f2?.playClap(); f3?.playClap();
+        batter?.playCheer(); f1?.playClap(); f2?.playClap(); f3?.playClap();
       } else if (outcome === 'MISS' || outcome === 'BOWLED') {
-        batter?.playDefeated();
-        bowler?.playCheer();
+        batter?.playDefeated(); bowler?.playCheer();
       } else if (outcome === 'SIX' || outcome === 'FOUR') {
-        batter?.playCheer();
-        bowler?.playIdle(false);
-        f1?.playClap(); f2?.playClap(); f3?.playClap();
+        batter?.playCheer(); bowler?.playIdle(false); f1?.playClap(); f2?.playClap(); f3?.playClap();
       } else if (outcome === 'WINDOW' || outcome === 'CAR_GLASS' || outcome === 'SCOOTER' || outcome === 'AC_UNIT' || outcome === 'NEWSPAPER') {
-        batter?.playDefeated();
-        bowler?.playIdle(false);
+        batter?.playDefeated(); bowler?.playIdle(false);
       } else {
-        batter?.playStance();
-        bowler?.playIdle(false);
+        batter?.playStance(); bowler?.playIdle(false);
       }
       this.ballRetrieval.triggerRetrieval(state, this.characters);
     }
@@ -178,14 +218,15 @@ export class Characters3DManager {
     if (!this.isReady) return;
 
     if (this.lastW !== cam.cssWidth || this.lastH !== cam.cssHeight || this.lastDpr !== cam.dpr) {
-      this.lastW = cam.cssWidth;
-      this.lastH = cam.cssHeight;
-      this.lastDpr = cam.dpr;
+      this.lastW = cam.cssWidth; this.lastH = cam.cssHeight; this.lastDpr = cam.dpr;
       this.renderer.setPixelRatio(cam.dpr);
       this.renderer.setSize(cam.cssWidth, cam.cssHeight, false);
     }
 
-    // Orthographic camera: left=worldLeft, right=worldLeft+visW, bottom=0, top=800
+    if (this.isDressingRoom) {
+      this.updateDressingRoomBatter(cam);
+    }
+
     this.camera.left = cam.worldLeft;
     this.camera.right = cam.worldLeft + cam.visibleWorldWidth;
     this.camera.top = CONFIG.world.height - cam.worldTop;
@@ -195,40 +236,8 @@ export class Characters3DManager {
     this.renderer.render(this.scene, this.camera);
   }
 
-  // Debug controls (Keys 1-9 to play clip, Arrow keys to nudge)
-  public handleDebugKey(code: string): boolean {
-    if (code.startsWith('Digit')) {
-      const num = parseInt(code.replace('Digit', ''), 10);
-      if (num >= 1 && num <= this.debugClipNames.length) {
-        const clipName = this.debugClipNames[num - 1];
-        const char = this.characters.get(this.selectedDebugChar);
-        char?.playClip(clipName, { loop: true });
-        console.log(`[3D DEBUG] Playing "${clipName}" on ${this.selectedDebugChar.toUpperCase()}`);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public cycleDebugCharacter(): void {
-    const list = ['batter', 'bowler'];
-    const idx = list.indexOf(this.selectedDebugChar);
-    this.selectedDebugChar = list[(idx + 1) % list.length];
-    console.log(`[3D DEBUG] Selected character: ${this.selectedDebugChar.toUpperCase()}`);
-  }
-
-  public nudgeDebugCharacter(dx: number, dy: number, dYaw: number): void {
-    const char = this.characters.get(this.selectedDebugChar);
-    if (!char) return;
-    const layout = (CONFIG.layout as unknown as Record<string, { x: number; y: number }>)[this.selectedDebugChar];
-    if (layout) {
-      layout.x += dx;
-      layout.y += dy;
-      char.setPosition(layout.x, layout.y, (layout.y - 660) * 0.4);
-    }
-    if (dYaw !== 0) {
-      char.setYaw(char.yaw + dYaw);
-    }
-    console.log(`[3D Config] ${this.selectedDebugChar}: { x: ${layout?.x}, y: ${layout?.y}, yaw: ${char.yaw.toFixed(2)} }`);
-  }
+  public get selectedDebugChar(): string { return this.dbg.selectedChar; }
+  public handleDebugKey(code: string): boolean { return this.dbg.handleKey(code, this.characters); }
+  public cycleDebugCharacter(): void { this.dbg.cycleCharacter(); }
+  public nudgeDebugCharacter(dx: number, dy: number, dYaw: number): void { this.dbg.nudge(dx, dy, dYaw, this.characters); }
 }

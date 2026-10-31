@@ -7,7 +7,7 @@ import { CONFIG } from './config.ts';
 import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip, resetGame, startNewDelivery, triggerGameOver } from './state.ts';
 import { handleGameOverClick, isGameOverButtonHover } from './share.ts';
 import { handleTitleClick, isTitleHover } from './title-hud.ts';
-import { handleProfileClick } from './profile-modal.ts';
+import { DressingRoom } from './dressing-room.ts';
 import { dismissMilestone, triggerTestMilestone } from './milestone.ts';
 import { renderGame, computeCamera, type CameraViewport } from './render.ts';
 import { loadBackgroundImage } from './background.ts';
@@ -39,6 +39,16 @@ function initGame(): void {
   const state = createInitialState();
   let camera: CameraViewport;
   const poseEditor = new PoseEditor(state);
+  const dressingRoom = new DressingRoom(
+    characters3D,
+    () => {
+      state.profileOpen = false;
+      resetGame(state);
+    },
+    () => {
+      state.profileOpen = false;
+    }
+  );
 
   function resize(): void {
     const dpr = window.devicePixelRatio || 1;
@@ -64,7 +74,7 @@ function initGame(): void {
 
   new InputManager(hudCanvas, {
     onAction: () => {
-      if (state.settingsOpen || state.profileOpen || state.guideActive) return;
+      if (state.settingsOpen || dressingRoom.active || state.guideActive) return;
       if (CONFIG.use3DCharacters && !characters3D.isReady) return;
       initAudio();
       handlePlayerSwing(state);
@@ -132,23 +142,22 @@ function initGame(): void {
     onAuthorClick: () => window.open('https://github.com/Abhinav-Muralidhar', '_blank', 'noopener,noreferrer'),
     onInstallClick: () => promptPWAInstall(),
     onGameOverPointer: (clientX: number, clientY: number) => {
-      if (state.profileOpen) {
-        return handleProfileClick(clientX, clientY, camera, state, (p) => {
-          if (CONFIG.use3DCharacters) characters3D.applyCustomization(p);
-        }, () => { state.profileOpen = false; });
-      }
+      if (dressingRoom.active) return false;
       if (state.state === 'TITLE') {
         return handleTitleClick(
           clientX, clientY, camera,
           () => resetGame(state),
           () => { state.settingsOpen = true; },
-          () => { state.profileOpen = true; }
+          () => {
+            state.profileOpen = true;
+            dressingRoom.open(camera);
+          }
         );
       }
       return handleGameOverClick(clientX, clientY, camera, state, () => resetGame(state), () => { state.settingsOpen = true; });
     },
     isGameOverHover: (clientX: number, clientY: number) => {
-      if (state.profileOpen) return true;
+      if (dressingRoom.active) return false;
       if (state.state === 'TITLE') return isTitleHover(clientX, clientY, camera);
       return isGameOverButtonHover(clientX, clientY, camera, state.state === 'GAME_OVER');
     },
