@@ -152,7 +152,6 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   const bestScore = updateStoredBestScore(state.score);
   const p = state.batterProfile;
   const pName = (p?.name || 'PLAYER').toUpperCase();
-  const jNum = p?.jerseyNumber ?? 1;
   const sr = state.ballCount > 0 ? ((state.score / state.ballCount) * 100).toFixed(1) : '0.0';
   const dismissal = getWicketCause(state).toUpperCase();
 
