@@ -19,10 +19,12 @@ import { handleSettingsPointer, handleGuidePointer, getSettingsLayout } from './
 
 import { Characters3DManager } from './characters3d.ts';
 import { inject } from '@vercel/analytics';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import { initPWA, promptPWAInstall, isIOS } from './pwa.ts';
 
 function initGame(): void {
   inject();
+  injectSpeedInsights();
   initPWA();
   const bgCanvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   const threeCanvas = document.getElementById('three-canvas') as HTMLCanvasElement;

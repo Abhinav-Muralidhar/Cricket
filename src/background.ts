@@ -5,9 +5,11 @@
 
 import { CONFIG, PALETTE } from './config.ts';
 import { drawParkedCar, drawParkedScooter } from './scene-street.ts';
+import { drawSky } from './sky.ts';
 import type { CameraViewport } from './render.ts';
 
 let bgImage: HTMLImageElement | null = null;
+let wiresImage: HTMLImageElement | null = null;
 let isLoaded = false;
 
 export function isBackgroundLoaded(): boolean {
@@ -17,17 +19,14 @@ export function isBackgroundLoaded(): boolean {
 export function loadBackgroundImage(onLoad?: () => void): void {
   if (bgImage) return;
   bgImage = new Image();
-  bgImage.src = '/bg.png';
+  bgImage.src = '/bg.jpg';
   bgImage.onload = () => {
     isLoaded = true;
     if (onLoad) onLoad();
   };
-  bgImage.onerror = () => {
-    // Fallback to /bg.jpg if /bg.png does not exist
-    if (bgImage && !bgImage.src.endsWith('/bg.jpg')) {
-      bgImage.src = '/bg.jpg';
-    }
-  };
+
+  wiresImage = new Image();
+  wiresImage.src = '/wires.png';
 }
 
 export function getBgTransform(cam: CameraViewport): { drawX: number; drawY: number; drawW: number; drawH: number; coverScale: number } {
@@ -81,6 +80,27 @@ export function updateResponsiveLayout(cam: CameraViewport): void {
   CONFIG.layout.car.height = 185 * coverScale;
 }
 
+const SKYLINE_PTS: [number, number][] = [
+  [1456, 74], [1400, 74], [1320, 75], [1280, 85], [1200, 70], [1160, 54],
+  [1140, 20], [950, 20], // Tall Red building roof
+  [920, 62], [880, 74], [800, 86], [720, 104], [640, 112], [600, 83], // Blue & Green buildings
+  [560, 185], [520, 168], [480, 185], // Distant house balcony
+  [440, 289], [360, 300], [320, 286], // Open sun valley under wires
+  [280, 57], [240, 123], [200, 92], [160, 84], [120, 44], [80, 34], [40, 15], [0, 35], // Yellow building
+];
+
+function clipToSky(ctx: CanvasRenderingContext2D, toW: (ix: number, iy: number) => { x: number; y: number }): void {
+  ctx.beginPath();
+  const p0 = toW(0, 0); ctx.moveTo(p0.x, p0.y);
+  const pTR = toW(1456, 0); ctx.lineTo(pTR.x, pTR.y);
+  for (const [ix, iy] of SKYLINE_PTS) {
+    const p = toW(ix, iy);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.closePath();
+  ctx.clip();
+}
+
 export function drawBackground(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
   if (!isLoaded || !bgImage || !bgImage.naturalWidth || !bgImage.naturalHeight) {
     ctx.save();
@@ -95,12 +115,27 @@ export function drawBackground(ctx: CanvasRenderingContext2D, cam: CameraViewpor
     return;
   }
 
-  const { drawX, drawY, drawW, drawH } = getBgTransform(cam);
+  const { drawX, drawY, drawW, drawH, coverScale } = getBgTransform(cam);
   updateResponsiveLayout(cam);
+  const toW = (ix: number, iy: number) => ({ x: drawX + ix * coverScale, y: drawY + iy * coverScale });
 
   ctx.save();
+
+  // 1. Full original hand-painted background (100% intact, zero missing pixels)
   ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
 
+  // 2. Animated clouds & birds in the sky (clipped to pass BEHIND the buildings)
+  ctx.save();
+  clipToSky(ctx, toW);
+  drawSky(ctx);
+  ctx.restore();
+
+  // 3. Wires overlay on top of sky elements (so clouds & birds pass BEHIND the wires)
+  if (wiresImage && wiresImage.complete && wiresImage.naturalWidth) {
+    ctx.drawImage(wiresImage, drawX, drawY, drawW, drawH);
+  }
+
+  // 4. Parked vehicles (if enabled)
   if (CONFIG.drawCodeVehicles) {
     drawParkedCar(ctx, CONFIG.layout.car.x, CONFIG.layout.car.y);
     drawParkedScooter(ctx, CONFIG.layout.scooter.x, CONFIG.layout.scooter.y);
