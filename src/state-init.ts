@@ -53,6 +53,8 @@ export function createInitialState(): GameState {
   return {
     state: 'TITLE',
     score: 0,
+    fours: 0,
+    sixes: 0,
     lives: CONFIG.gameplay.initialLives,
     ballCount: 0,
     currentBallSpeed: CONFIG.ball.baseSpeed,

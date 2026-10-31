@@ -107,6 +107,8 @@ export interface DeliveryResult {
 export interface GameState {
   state: GameStateKind;
   score: number;
+  fours: number;
+  sixes: number;
   lives: number;
   ballCount: number;
   currentBallSpeed: number;

@@ -3,18 +3,10 @@
  */
 
 import {
-  JERSEY_PRESETS,
-  PANTS_PRESETS,
-  SNEAKER_PRESETS,
-  BAT_PRESETS,
-  DEFAULT_PROFILE,
-  type BatterProfile,
+  JERSEY_PRESETS, PANTS_PRESETS, SNEAKER_PRESETS, BAT_PRESETS, DEFAULT_PROFILE, type BatterProfile,
 } from './profile.ts';
 import {
-  createIdentityCard,
-  createKitsSection,
-  createCategoryTabs,
-  type CategoryKey,
+  createIdentityCard, createKitsSection, createCategoryTabs, type CategoryKey,
 } from './dressing-room-header.ts';
 
 export interface DressingRoomDOMCallbacks {
@@ -48,21 +40,17 @@ export class DressingRoomDOM {
     this.overlay.setAttribute('role', 'dialog');
     this.overlay.setAttribute('aria-modal', 'true');
     this.overlay.setAttribute('aria-label', 'Player Customization');
-
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.cbs.onCancel();
     });
 
     const card = document.createElement('div');
     card.className = 'dr-popup-card';
-
     this.stage = document.createElement('div');
     this.stage.className = 'dr-stage';
     this.buildStageContent();
-
     this.panel = document.createElement('div');
     this.panel.className = 'dr-panel';
-
     card.appendChild(this.stage);
     card.appendChild(this.panel);
     this.overlay.appendChild(card);

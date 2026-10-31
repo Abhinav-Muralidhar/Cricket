@@ -11,13 +11,9 @@ import { triggerMilestoneIfCrossed, updateMilestone } from './milestone.ts';
 import { createBallRng, selectDelivery, calculateBallSpeed, calculateEffectiveSweetSpot, logDeliveryDebug, DELIVERY_PROFILES } from './deliveries.ts';
 import { isTouchDevice } from './pwa.ts';
 import { isFirstGuideDone } from './settings.ts';
-
 export { createRig, createBatterRig, createBowlerRig, createInitialState } from './state-init.ts';
 
-export function triggerGameOver(state: GameState): void {
-  state.state = 'GAME_OVER';
-  playGameOverSadJingle();
-}
+export function triggerGameOver(state: GameState): void { state.state = 'GAME_OVER'; playGameOverSadJingle(); }
 
 function stepBowledPhysics(state: GameState, delta: number): void {
   const groundY = CONFIG.street.groundY - state.ball.radius;
@@ -59,7 +55,7 @@ export function startNewDelivery(state: GameState): void {
 }
 
 export function resetGame(state: GameState): void {
-  state.score = 0; state.lives = CONFIG.gameplay.initialLives; state.ballCount = 0;
+  state.score = 0; state.fours = 0; state.sixes = 0; state.lives = CONFIG.gameplay.initialLives; state.ballCount = 0;
   state.lastResult = null; state.previewClipName = null; state.milestonePopup = null; state.recentDeliveries = [];
   if (!isFirstGuideDone()) state.guideActive = true;
   startNewDelivery(state);
@@ -215,6 +211,8 @@ export function updateGame(state: GameState, dt: number): void {
           state.state = 'RESULT'; state.ballCount++;
           const prevScore = state.score;
           state.score += state.lastResult?.runsScored || 0;
+          if (state.lastResult?.outcome === 'SIX') state.sixes++;
+          else if (state.lastResult?.outcome === 'FOUR' || state.lastResult?.outcome === 'EDGE') state.fours++;
           state.lives = Math.max(0, state.lives - (state.lastResult?.livesLost || 0));
           triggerMilestoneIfCrossed(state, prevScore);
           const o = state.lastResult?.outcome;

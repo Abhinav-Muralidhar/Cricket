@@ -85,8 +85,8 @@ function initGame(): void {
     },
     onFullscreenToggle: () => {
       if (isIOS()) return;
-      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-      else document.exitFullscreen().catch(() => {});
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => { });
+      else document.exitFullscreen().catch(() => { });
     },
     onSettingsToggle: () => {
       state.settingsOpen = !state.settingsOpen;
@@ -154,7 +154,12 @@ function initGame(): void {
           }
         );
       }
-      return handleGameOverClick(clientX, clientY, camera, state, () => resetGame(state), () => { state.settingsOpen = true; });
+      return handleGameOverClick(
+        clientX, clientY, camera, state,
+        () => resetGame(state),
+        () => { state.settingsOpen = true; },
+        () => { state.state = 'TITLE'; }
+      );
     },
     isGameOverHover: (clientX: number, clientY: number) => {
       if (dressingRoom.active) return false;

@@ -102,26 +102,34 @@ export function getStoredProfile(): BatterProfile {
         };
       }
     }
-  } catch {}
+  } catch { }
   return { ...DEFAULT_PROFILE };
 }
 
 export function saveStoredProfile(p: BatterProfile): void {
   try {
     localStorage.setItem(STORAGE_KEYS[0], JSON.stringify(p));
-  } catch {}
+  } catch { }
 }
 
 export function createJerseyBackBadge(name: string, num: number): THREE.Mesh {
   const canvas = document.createElement('canvas');
-  canvas.width = 256; canvas.height = 256;
+  canvas.width = 512; canvas.height = 512;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide, depthWrite: false });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 18), mat);
+  const mat = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(24, 26), mat);
   mesh.name = 'jerseyBackBadge';
   mesh.userData.canvas = canvas; mesh.userData.texture = texture;
-  mesh.position.set(0, 9, -12.5);
+  mesh.position.set(0, 0, -10.4);
   mesh.rotation.y = Math.PI;
   updateJerseyBackBadge(mesh, name, num);
   return mesh;
@@ -132,13 +140,27 @@ export function updateJerseyBackBadge(mesh: THREE.Mesh, name: string, num: numbe
   const texture = mesh.userData.texture as THREE.CanvasTexture;
   if (!canvas || !texture) return;
   const ctx = canvas.getContext('2d')!;
-  ctx.clearRect(0, 0, 256, 256);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 26px system-ui, sans-serif';
+  ctx.clearRect(0, 0, 512, 512);
+
+  ctx.save();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(name.toUpperCase().slice(0, 10), 128, 52);
-  ctx.font = '900 120px system-ui, sans-serif';
-  ctx.fillText(String(num), 128, 148);
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; ctx.shadowBlur = 8;
+  ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+
+  // Name across upper back
+  ctx.font = '900 44px system-ui, -apple-system, sans-serif';
+  ctx.strokeText(name.toUpperCase().slice(0, 10), 256, 80);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(name.toUpperCase().slice(0, 10), 256, 80);
+
+  // Big, bold number
+  ctx.font = '500 270px ui-monospace, SFMono-Regular, Impact, sans-serif';
+  ctx.lineWidth = 14; ctx.shadowBlur = 14;
+  ctx.strokeText(String(num), 256, 305);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(String(num), 256, 305);
+  ctx.restore();
+
   texture.needsUpdate = true;
 }
 
