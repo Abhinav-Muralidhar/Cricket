@@ -156,6 +156,7 @@ export function createBlobShadowMesh(): THREE.Mesh {
 
 export function createCapProp(color: string | number): THREE.Group {
   const group = new THREE.Group();
+  group.name = 'capProp';
   const capMat = createToonMaterial(color);
 
   // Half-sphere cap dome
@@ -177,6 +178,7 @@ export function createCapProp(color: string | number): THREE.Group {
 
 export function createBatProp(): THREE.Group {
   const batGroup = new THREE.Group();
+  batGroup.name = 'batProp';
   const bladeMat = createToonMaterial('#F3E4C8'); // Prime English Willow
   const handleMat = createToonMaterial('#222228'); // Sleek rubber grip
   const stickerMat = createToonMaterial('#D62828'); // Red brand chevron
@@ -203,6 +205,7 @@ export function createBatProp(): THREE.Group {
   // Red manufacturer brand stripe across shoulders
   const stickerGeo = new THREE.BoxGeometry(11.0, 4.8, 3.5);
   const sticker = new THREE.Mesh(stickerGeo, stickerMat);
+  sticker.name = 'batSticker';
   sticker.position.set(0, 0, 8.5);
   batGroup.add(sticker);
 

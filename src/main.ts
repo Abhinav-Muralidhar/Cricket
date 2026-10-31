@@ -7,6 +7,7 @@ import { CONFIG } from './config.ts';
 import { createInitialState, updateGame, handlePlayerSwing, cycleBatterPreviewClip, resetGame, startNewDelivery, triggerGameOver } from './state.ts';
 import { handleGameOverClick, isGameOverButtonHover } from './share.ts';
 import { handleTitleClick, isTitleHover } from './title-hud.ts';
+import { handleProfileClick } from './profile-modal.ts';
 import { dismissMilestone, triggerTestMilestone } from './milestone.ts';
 import { renderGame, computeCamera, type CameraViewport } from './render.ts';
 import { loadBackgroundImage } from './background.ts';
@@ -63,7 +64,7 @@ function initGame(): void {
 
   new InputManager(hudCanvas, {
     onAction: () => {
-      if (state.settingsOpen || state.guideActive) return;
+      if (state.settingsOpen || state.profileOpen || state.guideActive) return;
       if (CONFIG.use3DCharacters && !characters3D.isReady) return;
       initAudio();
       handlePlayerSwing(state);
@@ -131,12 +132,23 @@ function initGame(): void {
     onAuthorClick: () => window.open('https://github.com/Abhinav-Muralidhar', '_blank', 'noopener,noreferrer'),
     onInstallClick: () => promptPWAInstall(),
     onGameOverPointer: (clientX: number, clientY: number) => {
+      if (state.profileOpen) {
+        return handleProfileClick(clientX, clientY, camera, state, (p) => {
+          if (CONFIG.use3DCharacters) characters3D.applyCustomization(p);
+        }, () => { state.profileOpen = false; });
+      }
       if (state.state === 'TITLE') {
-        return handleTitleClick(clientX, clientY, camera, () => resetGame(state), () => { state.settingsOpen = true; });
+        return handleTitleClick(
+          clientX, clientY, camera,
+          () => resetGame(state),
+          () => { state.settingsOpen = true; },
+          () => { state.profileOpen = true; }
+        );
       }
       return handleGameOverClick(clientX, clientY, camera, state, () => resetGame(state), () => { state.settingsOpen = true; });
     },
     isGameOverHover: (clientX: number, clientY: number) => {
+      if (state.profileOpen) return true;
       if (state.state === 'TITLE') return isTitleHover(clientX, clientY, camera);
       return isGameOverButtonHover(clientX, clientY, camera, state.state === 'GAME_OVER');
     },

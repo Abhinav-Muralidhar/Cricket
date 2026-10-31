@@ -8,6 +8,7 @@ import { CONFIG } from './config.ts';
 import { load3DAssets, instantiateCharacter } from './model-loader.ts';
 import { CharacterController3D } from './character-controller.ts';
 import { BallRetrievalManager } from './ball-retrieval.ts';
+import { getStoredProfile, applyProfileTo3D, type BatterProfile, JERSEY_PRESETS } from './profile.ts';
 import type { CameraViewport } from './render.ts';
 import type { GameState } from './types.ts';
 
@@ -72,10 +73,13 @@ export class Characters3DManager {
     const cols = CONFIG.colors3D;
 
     // 1. Batter (hero, with bat)
-    const batterInst = instantiateCharacter(cols.batter, { withBat: true, withCap: false, modelType: 'batter' });
+    const profile = getStoredProfile();
+    const jerseyCol = JERSEY_PRESETS[profile.jerseyIndex]?.color || cols.batter;
+    const batterInst = instantiateCharacter(jerseyCol, { withBat: true, withCap: profile.hasCap, modelType: 'batter' });
     const batter = new CharacterController3D(batterInst, {
       yaw: c3d.batter.yaw, scale: c3d.batter.scale, isLeftHanded: c3d.batter.isLeftHanded, isBatter: true,
     });
+    applyProfileTo3D(batter.group, profile);
     batter.setPosition(l.batter.x, l.batter.y, 0);
     batter.playStance();
     this.characters.set('batter', batter);
@@ -91,6 +95,11 @@ export class Characters3DManager {
     this.scene.add(bowler.group);
 
     // 3. Fielders disabled for now per user request (focus on 1-on-1 pitch action)
+  }
+
+  public applyCustomization(profile: BatterProfile): void {
+    const batter = this.characters.get('batter');
+    if (batter) applyProfileTo3D(batter.group, profile);
   }
 
   public update(dt: number, state: GameState): void {

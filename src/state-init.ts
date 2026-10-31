@@ -7,6 +7,7 @@ import { Animator } from './animation.ts';
 import { BATTER_CLIPS, BOWLER_CLIPS, FIELDER_CLIPS } from './poses.ts';
 import type { GameState, CharacterRig, CharacterVariant, RigPart } from './types.ts';
 import { getStoredAssist } from './settings.ts';
+import { getStoredProfile } from './profile.ts';
 
 export function createRig(
   x: number,
@@ -60,6 +61,8 @@ export function createInitialState(): GameState {
     recentDeliveries: [],
     gameSeed: Math.floor(Math.random() * 1000000),
     settingsOpen: false,
+    profileOpen: false,
+    batterProfile: getStoredProfile(),
     guideActive: false,
     assistEnabled: getStoredAssist(),
     ball: {

@@ -4,7 +4,9 @@
 
 import type { Animator } from './animation.ts';
 import type { Delivery } from './deliveries.ts';
+import type { BatterProfile } from './profile.ts';
 export type { Delivery } from './deliveries.ts';
+export type { BatterProfile } from './profile.ts';
 
 export type GameStateKind =
   | 'TITLE'
@@ -113,6 +115,8 @@ export interface GameState {
   recentDeliveries: Delivery[];
   gameSeed: number;
   settingsOpen: boolean;
+  profileOpen: boolean;
+  batterProfile: BatterProfile;
   guideActive: boolean;
   assistEnabled: boolean;
   ball: BallState;

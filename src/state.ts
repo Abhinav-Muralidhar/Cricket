@@ -66,7 +66,7 @@ export function resetGame(state: GameState): void {
 }
 
 export function handlePlayerSwing(state: GameState): void {
-  if (state.isPortrait || state.guideActive || state.settingsOpen || state.milestonePopup?.active) return;
+  if (state.isPortrait || state.guideActive || state.settingsOpen || state.profileOpen || state.milestonePopup?.active) return;
   if (state.state === 'TITLE' || state.state === 'GAME_OVER') return;
   if (state.state === 'RESULT') {
     if (state.lives <= 0) {
@@ -111,7 +111,7 @@ export function cycleBatterPreviewClip(state: GameState): void {
 }
 
 export function updateGame(state: GameState, dt: number): void {
-  if (state.isPortrait || state.guideActive || state.settingsOpen) return;
+  if (state.isPortrait || state.guideActive || state.settingsOpen || state.profileOpen) return;
   const delta = Math.min(dt, 0.05);
 
   if (state.milestonePopup?.active) {

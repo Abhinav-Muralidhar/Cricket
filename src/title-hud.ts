@@ -10,7 +10,7 @@ if (titleCharsImg) titleCharsImg.src = '/title-chars.png';
 let showRulesModal = false;
 
 export function getTitleLayout(camWidth: number, camHeight: number): {
-  chars: ButtonRect; badge: ButtonRect; playBtn: ButtonRect; infoBtn: ButtonRect; gearBtn: ButtonRect; card: ButtonRect; closeBtn: ButtonRect;
+  chars: ButtonRect; badge: ButtonRect; playBtn: ButtonRect; lockerBtn: ButtonRect; infoBtn: ButtonRect; gearBtn: ButtonRect; card: ButtonRect; closeBtn: ButtonRect;
 } {
   const cx = camWidth / 2, cy = camHeight / 2;
   const isBig = camHeight >= 500 && camWidth >= 760;
@@ -25,12 +25,13 @@ export function getTitleLayout(camWidth: number, camHeight: number): {
   const badgeH = isBig ? 74 : 64;
   const badgeX = cx - badgeW / 2, badgeY = charsY + charsH - (isBig ? 28 : 22);
 
-  const btnSize = isBig ? 58 : 52, gap = 16, btnY = badgeY + badgeH + (isBig ? 15 : 12);
-  const totalW = btnSize * 3 + gap * 2;
+  const btnSize = isBig ? 56 : 50, gap = 14, btnY = badgeY + badgeH + (isBig ? 15 : 12);
+  const totalW = btnSize * 4 + gap * 3;
   const startX = cx - totalW / 2;
   const playBtn: ButtonRect = { x: startX, y: btnY, w: btnSize, h: btnSize };
-  const infoBtn: ButtonRect = { x: startX + btnSize + gap, y: btnY, w: btnSize, h: btnSize };
-  const gearBtn: ButtonRect = { x: startX + (btnSize + gap) * 2, y: btnY, w: btnSize, h: btnSize };
+  const lockerBtn: ButtonRect = { x: startX + btnSize + gap, y: btnY, w: btnSize, h: btnSize };
+  const infoBtn: ButtonRect = { x: startX + (btnSize + gap) * 2, y: btnY, w: btnSize, h: btnSize };
+  const gearBtn: ButtonRect = { x: startX + (btnSize + gap) * 3, y: btnY, w: btnSize, h: btnSize };
 
   const cardW = Math.min(360, camWidth - 24), cardH = 220;
   const cardX = cx - cardW / 2, cardY = cy - cardH / 2;
@@ -39,13 +40,14 @@ export function getTitleLayout(camWidth: number, camHeight: number): {
   return {
     chars: { x: charsX, y: charsY, w: charsW, h: charsH },
     badge: { x: badgeX, y: badgeY, w: badgeW, h: badgeH },
-    playBtn, infoBtn, gearBtn,
+    playBtn, lockerBtn, infoBtn, gearBtn,
     card: { x: cardX, y: cardY, w: cardW, h: cardH }, closeBtn,
   };
 }
 
 export function handleTitleClick(
-  clientX: number, clientY: number, cam: CameraViewport, onStart: () => void, onOpenSettings?: () => void
+  clientX: number, clientY: number, cam: CameraViewport, onStart: () => void,
+  onOpenSettings?: () => void, onOpenLocker?: () => void
 ): boolean {
   const tl = getTitleLayout(cam.cssWidth, cam.cssHeight);
   const inR = (r: ButtonRect) => clientX >= r.x && clientX <= r.x + r.w && clientY >= r.y && clientY <= r.y + r.h;
@@ -54,6 +56,7 @@ export function handleTitleClick(
     if (inR(tl.closeBtn) || !inR(tl.card)) showRulesModal = false;
     return true;
   }
+  if (inR(tl.lockerBtn)) { onOpenLocker?.(); return true; }
   if (inR(tl.infoBtn)) { showRulesModal = true; return true; }
   if (inR(tl.gearBtn)) { onOpenSettings?.(); return true; }
   if (inR(tl.playBtn)) { onStart(); return true; }
@@ -64,7 +67,7 @@ export function isTitleHover(clientX: number, clientY: number, cam: CameraViewpo
   const tl = getTitleLayout(cam.cssWidth, cam.cssHeight);
   const inR = (r: ButtonRect) => clientX >= r.x && clientX <= r.x + r.w && clientY >= r.y && clientY <= r.y + r.h;
   if (showRulesModal) return inR(tl.closeBtn);
-  return inR(tl.playBtn) || inR(tl.infoBtn) || inR(tl.gearBtn);
+  return inR(tl.playBtn) || inR(tl.lockerBtn) || inR(tl.infoBtn) || inR(tl.gearBtn);
 }
 
 export function drawGullyBadge(ctx: CanvasRenderingContext2D, b: ButtonRect, cx: number): void {
@@ -130,12 +133,13 @@ export function drawTitleHUD(ctx: CanvasRenderingContext2D, cam: CameraViewport)
   drawGullyBadge(ctx, l.badge, cx);
 
   drawThemedIconButton(ctx, l.playBtn, '▶', '#451A03', 26);
+  drawThemedIconButton(ctx, l.lockerBtn, '👕', '#451A03', 24);
   drawThemedIconButton(ctx, l.infoBtn, 'ℹ', '#451A03', 24);
   drawThemedIconButton(ctx, l.gearBtn, '⚙', '#451A03', 24);
 
   ctx.fillStyle = '#94A3B8'; ctx.font = '600 12px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('PLAY   •   RULES   •   SETTINGS', cx, l.playBtn.y + l.playBtn.h + 16);
+  ctx.fillText('PLAY   •   CLOSET   •   RULES   •   SETTINGS', cx, l.playBtn.y + l.playBtn.h + 16);
 
   if (showRulesModal) {
     ctx.fillStyle = 'rgba(10, 8, 14, 0.75)';

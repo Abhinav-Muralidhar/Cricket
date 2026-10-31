@@ -177,17 +177,17 @@ export function instantiateCharacter(
   cloned.traverse((o) => { if ((o as THREE.Mesh).isMesh && !o.userData.isOutline) meshes.push(o as THREE.Mesh); });
 
   for (const mesh of meshes) {
+    const isShirt = mesh.name === 'Ch42_Shirt', isShorts = mesh.name === 'Ch42_Shorts';
     const origMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     const origMap = (origMat as THREE.MeshStandardMaterial)?.map || null;
     if (origMap) origMap.colorSpace = THREE.SRGBColorSpace;
     const isEyelash = mesh.name.toLowerCase().includes('eyelash');
-    mesh.material = createToonMaterial(color, origMap);
+    mesh.material = (isShirt || isShorts) ? createToonMaterial(color, null) : createToonMaterial(color, origMap);
     if (isEyelash) {
       mesh.material.transparent = true;
       mesh.material.alphaTest = 0.5;
     }
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
+    mesh.castShadow = false; mesh.receiveShadow = false;
     if (!isEyelash) attachInvertedHullOutline(mesh);
   }
 
@@ -199,46 +199,32 @@ export function instantiateCharacter(
   if (options.withBat) {
     const handBone = findBone(cloned, 'mixamorig:RightHand') || findBone(cloned, 'RightHand');
     if (handBone) {
-      console.log(`[3D] Attached bat to bone: "${handBone.name}"`);
       const bat = createBatProp();
       bat.position.set(CONFIG.batOffset.x, CONFIG.batOffset.y, CONFIG.batOffset.z);
       bat.rotation.set(CONFIG.batRotation.x, CONFIG.batRotation.y, CONFIG.batRotation.z);
       bat.scale.set(CONFIG.batScale.x, CONFIG.batScale.y, CONFIG.batScale.z);
       handBone.add(bat);
-    } else {
-      console.warn('[3D] mixamorig:RightHand bone not found for bat');
     }
   }
 
-  // Attach Cap to Head
-  if (options.withCap) {
+  // Attach Cap to Head (always available on batter model for live toggling)
+  if (options.withCap || options.modelType === 'batter') {
     const headBone = findBone(cloned, 'Head');
-    if (headBone) headBone.add(createCapProp(color));
+    if (headBone) {
+      const cap = createCapProp(color);
+      cap.visible = Boolean(options.withCap);
+      headBone.add(cap);
+    }
   }
 
   const mixer = new THREE.AnimationMixer(cloned);
   const actions = new Map<string, THREE.AnimationAction>();
-  const clonedBones = new Set<string>();
-  cloned.traverse((c) => { if (c instanceof THREE.Bone) clonedBones.add(c.name); });
-
-  const unmatchedTracks: string[] = [];
-  animationClips.forEach((clip, name) => {
-    actions.set(name, mixer.clipAction(clip));
-    clip.tracks.forEach((track) => {
-      const nodeName = track.name.split('.')[0];
-      if (!clonedBones.has(nodeName)) unmatchedTracks.push(`${name}:${track.name}`);
-    });
-  });
-
-  const clipNames = Array.from(actions.keys());
-  if (unmatchedTracks.length === 0) console.log(`[3D] Character clips: [${clipNames.join(', ')}]. All tracks match bones.`);
-  else console.warn(`[3D] Character clips: [${clipNames.join(', ')}]. Unmatched tracks (${unmatchedTracks.length}):`, unmatchedTracks);
+  animationClips.forEach((clip, name) => actions.set(name, mixer.clipAction(clip)));
 
   const defaultAction = options.modelType === 'batter' && actions.has('battingStance') ? 'battingStance' : 'idle';
   const idleAction = actions.get(defaultAction);
   if (idleAction) {
-    idleAction.reset();
-    idleAction.setLoop(THREE.LoopRepeat, Infinity);
+    idleAction.reset(); idleAction.setLoop(THREE.LoopRepeat, Infinity);
     idleAction.time = Math.random() * (idleAction.getClip().duration || 1.0);
     idleAction.play();
   }

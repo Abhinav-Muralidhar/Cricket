@@ -11,6 +11,7 @@ import { drawGameOverHUD, getStoredBestScore } from './share.ts';
 import { drawTitleHUD } from './title-hud.ts';
 import { drawMilestonePopup } from './milestone.ts';
 import { drawAssistTag, drawAssistMarker, drawSettingsModal, drawFirstTimeGuide } from './settings.ts';
+import { drawProfileModal } from './profile-modal.ts';
 
 export function drawRotatePhoneOverlay(ctx: CanvasRenderingContext2D, cam: CameraViewport): void {
   ctx.save();
@@ -186,6 +187,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState, cam: Ca
   drawMilestonePopup(ctx, state, cam);
   if (state.guideActive) drawFirstTimeGuide(ctx, cam);
   if (state.settingsOpen) drawSettingsModal(ctx, cam, state);
+  if (state.profileOpen) drawProfileModal(ctx, cam, state);
   ctx.restore();
 }
 

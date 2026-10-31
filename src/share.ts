@@ -4,6 +4,7 @@
 import type { GameState } from './types.ts';
 import type { CameraViewport } from './render.ts';
 import { isAssistHintShown, setAssistHintShown } from './settings.ts';
+import { getProfileMoniker } from './profile.ts';
 
 const BEST_SCORE_KEY = 'gully_cricket_best_score';
 let copiedToastUntil = 0;
@@ -57,7 +58,9 @@ export function getGameOverLayout(camWidth: number, camHeight: number): {
 
 export async function shareGame(state: GameState): Promise<void> {
   const url = 'https://playgully.vercel.app/';
-  const text = `I scored ${state.score} in Gully Cricket! ${getFunnyGameOverLine(state)}`;
+  const moniker = state.batterProfile ? getProfileMoniker(state.batterProfile) : '';
+  const prefix = moniker ? `[${moniker}] ` : '';
+  const text = `${prefix}I scored ${state.score} in Gully Cricket! ${getFunnyGameOverLine(state)}`;
   const fullText = `${text}\nBeat me: ${url}`;
 
   if (typeof navigator !== 'undefined' && navigator.share) {
@@ -142,8 +145,9 @@ export function drawGameOverHUD(ctx: CanvasRenderingContext2D, state: GameState,
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   ctx.fillText('GAME OVER', cx, c.y + 40);
 
-  ctx.fillStyle = '#FDE68A'; ctx.font = 'italic 500 13px system-ui, sans-serif';
-  ctx.fillText(`"${getFunnyGameOverLine(state)}"`, cx, c.y + 64);
+  const moniker = state.batterProfile ? getProfileMoniker(state.batterProfile) : '';
+  ctx.fillStyle = '#FDE68A'; ctx.font = 'italic 500 12px system-ui, sans-serif';
+  ctx.fillText(`${moniker ? `★ ${moniker.toUpperCase()} ★  •  ` : ''}"${getFunnyGameOverLine(state)}"`, cx, c.y + 64);
 
   const spW = c.w - 44, spH = 54, spX = c.x + 22, spY = c.y + 78;
   ctx.fillStyle = 'rgba(15, 12, 10, 0.75)';
